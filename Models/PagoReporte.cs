@@ -1,4 +1,4 @@
-namespace GymDashboard.Models;
+namespace CoreAdmin.Models;
 
 public class PagoReporte
 {

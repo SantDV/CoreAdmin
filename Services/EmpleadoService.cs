@@ -1,8 +1,8 @@
 using Dapper;
-using GymDashboard.Models;
+using CoreAdmin.Models;
 using Microsoft.Data.Sqlite;
 
-namespace GymDashboard.Services;
+namespace CoreAdmin.Services;
 
 public class EmpleadoService
 {

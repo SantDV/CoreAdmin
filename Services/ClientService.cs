@@ -1,6 +1,6 @@
-using GymDashboard.Models;
+using CoreAdmin.Models;
 
-namespace GymDashboard.Services;
+namespace CoreAdmin.Services;
 
 public class ClientService
 {

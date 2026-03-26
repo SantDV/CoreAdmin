@@ -2,7 +2,7 @@ using System.IO;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
-namespace GymDashboard.Services;
+namespace CoreAdmin.Services;
 
 public static class DatabaseInitializer
 {
@@ -31,6 +31,20 @@ public static class DatabaseInitializer
                 var schemaSql = File.ReadAllText("schema.sql");
                 connection.Execute(schemaSql);
                 SeedData(connection);
+            }
+
+            // Ensure Printer Config table exists for existing databases
+            connection.Execute(@"CREATE TABLE IF NOT EXISTS ""CONFIGURACION_IMPRESORA"" (
+                ""id"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                ""nombre_impresora"" TEXT,
+                ""ip_impresora"" TEXT,
+                ""puerto_impresora"" INTEGER,
+                ""usar_red"" INTEGER DEFAULT 0
+            )");
+            
+            if (connection.ExecuteScalar<int>("SELECT count(*) FROM CONFIGURACION_IMPRESORA") == 0)
+            {
+                connection.Execute("INSERT INTO CONFIGURACION_IMPRESORA (nombre_impresora, ip_impresora, puerto_impresora, usar_red) VALUES ('XPrinter XP-V320N', '192.168.1.100', 9100, 1)");
             }
         }
     }

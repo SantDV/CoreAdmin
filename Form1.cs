@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
-using GymDashboard.Services;
+using CoreAdmin.Services;
 
-namespace GymDashboard;
+namespace CoreAdmin;
 
 public partial class Form1 : Form
 {
@@ -10,7 +10,7 @@ public partial class Form1 : Form
     {
         InitializeComponent();
 
-        this.Text = "Gym Dashboard Pro";
+        this.Text = "CoreAdmin Pro";
         this.Width = 1366;
         this.Height = 768;
         this.StartPosition = FormStartPosition.CenterScreen;
@@ -28,6 +28,9 @@ public partial class Form1 : Form
         services.AddSingleton<EmpleadoService>();
         services.AddSingleton<ReportesService>();
         services.AddSingleton<SettingsService>();
+        services.AddSingleton<PrinterService>();
+
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
         var blazorWebView = new BlazorWebView
         {

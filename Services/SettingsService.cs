@@ -1,9 +1,9 @@
 using Dapper;
-using GymDashboard.Models;
+using CoreAdmin.Models;
 using Microsoft.Data.Sqlite;
 using System.IO;
 
-namespace GymDashboard.Services;
+namespace CoreAdmin.Services;
 
 public class SettingsService
 {
@@ -67,5 +67,25 @@ public class SettingsService
         using var connection = new SqliteConnection(_connectionString);
         var query = "DELETE FROM PLANES WHERE id_plan = @Id";
         await connection.ExecuteAsync(query, new { Id = idPlan });
+    }
+
+    public async Task<PrinterSettings> GetPrinterSettingsAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        var query = "SELECT nombre_impresora as PrinterName, ip_impresora as PrinterIp, puerto_impresora as PrinterPort, usar_red as UseNetwork FROM CONFIGURACION_IMPRESORA LIMIT 1";
+        return await connection.QueryFirstOrDefaultAsync<PrinterSettings>(query) ?? new PrinterSettings();
+    }
+
+    public async Task UpdatePrinterSettingsAsync(PrinterSettings settings)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        var query = "UPDATE CONFIGURACION_IMPRESORA SET nombre_impresora = @PrinterName, ip_impresora = @PrinterIp, puerto_impresora = @PrinterPort, usar_red = @UseNetwork WHERE id = 1";
+        
+        // Si no existe (caso raro), insertar
+        var rows = await connection.ExecuteAsync(query, settings);
+        if (rows == 0)
+        {
+            await connection.ExecuteAsync("INSERT INTO CONFIGURACION_IMPRESORA (nombre_impresora, ip_impresora, puerto_impresora, usar_red) VALUES (@PrinterName, @PrinterIp, @PrinterPort, @UseNetwork)", settings);
+        }
     }
 }

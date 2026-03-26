@@ -1,4 +1,4 @@
-﻿namespace GymDashboard;
+namespace CoreAdmin;
 
 partial class Form1
 {

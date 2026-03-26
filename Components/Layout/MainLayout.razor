@@ -1,19 +1,19 @@
 @inherits LayoutComponentBase
-@using GymDashboard.Services
+@using CoreAdmin.Services
 @inject AuthService AuthService
 @implements IDisposable
 
 @if (AuthService.CurrentUser == null)
 {
     <!-- Pantalla de Login -->
-    <GymDashboard.Components.Pages.Login />
+    <CoreAdmin.Components.Pages.Login />
 }
 else
 {
     <!-- Pantalla Principal Protegida -->
     <div class="d-flex bg-light w-100" style="height: 100vh; overflow: hidden; background-color: #f8fafc !important;">
         <!-- Sleek Modern Sidebar -->
-        <div class="text-white d-flex flex-column transition-sidebar shadow-lg position-relative" 
+        <div class="text-white d-flex flex-column transition-sidebar shadow-lg position-relative no-print" 
              style="height: 100vh; width: @SidebarWidth; min-width: @SidebarWidth; overflow-x: hidden; z-index: 1040; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-right: 1px solid rgba(255,255,255,0.05);">
             
             <!-- Header & Toggle (Fixed Height) -->
@@ -28,7 +28,7 @@ else
                 {
                     <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
                         <i class="bi bi-activity text-primary fs-3 me-2 text-shadow-glow"></i>
-                        <span class="fs-5 fw-bolder tracking-wide text-nowrap text-white">GymManager</span>
+                        <span class="fs-5 fw-bolder tracking-wide text-nowrap text-white">CoreAdmin</span>
                     </div>
                     <button class="btn btn-link text-white text-opacity-50 p-0 ms-2 hover-text-white transition-colors" @onclick="ToggleSidebar">
                         <i class="bi bi-chevron-bar-left fs-4"></i>
@@ -121,9 +121,9 @@ else
         <!-- Main Content Area -->
         <div class="flex-grow-1 d-flex flex-column overflow-hidden position-relative bg-light">
             <!-- Glassmorphism decorative background glow -->
-            <div class="position-absolute top-0 start-0 w-100" style="height: 200px; background: linear-gradient(180deg, rgba(200,210,225,0.4) 0%, rgba(248,249,250,0) 100%); z-index: 0; pointer-events: none;"></div>
+            <div class="position-absolute top-0 start-0 w-100 no-print" style="height: 200px; background: linear-gradient(180deg, rgba(200,210,225,0.4) 0%, rgba(248,249,250,0) 100%); z-index: 0; pointer-events: none;"></div>
             
-            <nav class="navbar navbar-light px-4 py-3 d-flex align-items-center position-relative mb-2" style="z-index: 1;">
+            <nav class="navbar navbar-light px-4 py-3 d-flex align-items-center position-relative mb-2 no-print" style="z-index: 1;">
                 <span class="navbar-brand mb-0 h4 fw-bolder" style="color: #1e293b; letter-spacing: -0.5px;">Panel de Control</span>
                 <div class="ms-auto d-flex align-items-center">
                     <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill border-0 fw-medium">
