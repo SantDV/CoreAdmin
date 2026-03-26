@@ -1,0 +1,206 @@
+@page "/settings"
+@using GymDashboard.Models
+@using GymDashboard.Services
+@inject SettingsService SettingsService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Configuración Global</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 fw-bold text-dark"><i class="bi bi-gear-fill text-primary me-2"></i> Configuración General</h3>
+</div>
+
+<div class="row g-4">
+    <!-- Planes ABM -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header bg-white py-3 border-bottom border-light flex-wrap d-flex gap-2 justify-content-between align-items-center rounded-top-4">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-tags-fill text-primary opacity-75 me-2"></i>Membresías y Tarífas</h5>
+                <button class="btn btn-sm btn-primary px-3 shadow-sm rounded-pill fw-medium" @onclick="ShowAddForm"><i class="bi bi-plus-circle me-1"></i> Añadir Plan</button>
+            </div>
+            <div class="card-body p-0">
+                @if (showForm)
+                {
+                    <div class="p-4 bg-light border-bottom">
+                        <EditForm Model="editingPlan" OnValidSubmit="SavePlan">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label small text-muted fw-bold">Nombre de la Cuota</label>
+                                    <InputText class="form-control border-0 shadow-sm" @bind-Value="editingPlan.PlanNombre" required placeholder="Ej. Semestral" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted fw-bold">Importe Fijo ($)</label>
+                                    <InputNumber class="form-control border-0 shadow-sm text-success fw-bold" @bind-Value="editingPlan.Precio" required />
+                                </div>
+                                <div class="col-md-3 d-flex gap-2">
+                                    <button type="submit" class="btn btn-success w-100 shadow-sm"><i class="bi bi-check-lg"></i> Guardar</button>
+                                    <button type="button" class="btn btn-light shadow-sm text-secondary" @onclick="() => showForm = false"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                }
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4 py-3 text-muted border-bottom-0">Plan</th>
+                                <th class="py-3 text-muted text-end border-bottom-0">Precio Vigente</th>
+                                <th class="pe-4 py-3 text-end text-muted border-bottom-0">Gestión</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in planes)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex justify-content-center align-items-center me-3" style="width:35px; height:35px;">
+                                                <i class="bi bi-ticket-detailed-fill"></i>
+                                            </div>
+                                            <div>
+                                                <span class="fw-bold text-dark d-block">@p.PlanNombre</span>
+                                                <span class="text-muted small">DB_ID: #@p.IdPlan</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end align-middle">
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold fs-6 tracking-wide px-3 py-2">
+                                            $@p.Precio.ToString("N2")
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4 align-middle">
+                                        <button class="btn btn-sm btn-light text-primary me-2 border shadow-sm" @onclick="() => EditPlan(p)"><i class="bi bi-pencil"></i></button>
+                                        <button class="btn btn-sm btn-light text-danger border shadow-sm" @onclick="() => DeletePlan(p.IdPlan)"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!planes.Any() && !isLoading)
+                            {
+                                <tr><td colspan="3" class="text-center py-5 text-muted">No existen planes registrados.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Module -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 rounded-4 bg-dark text-white h-100" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+            <div class="card-body p-4 text-center d-flex flex-column justify-content-center">
+                <i class="bi bi-box-seam-fill text-primary opacity-75 mb-3" style="font-size: 3rem; text-shadow: 0 0 15px rgba(13, 110, 253, 0.4);"></i>
+                <h4 class="fw-bold mb-2">Respaldar Información</h4>
+                <p class="text-white-50 small mb-4 px-lg-3">Extrae los datos encapsulados de Windows Forms y genera una copia idéntica (clientes, pagos y claves) guardándola localmente de manera limpia y veloz.</p>
+                
+                <button class="btn btn-primary shadow-lg fs-6 fw-bold mb-3 py-3 rounded-pill position-relative overflow-hidden w-100" @onclick="StartBackup" disabled="@isBackingUp">
+                    @if (isBackingUp)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span> <span>Extrayendo Datos...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-cloud-arrow-down-fill fs-5 me-2 align-middle"></i> <span>Crear Copia Inmediata</span>
+                    }
+                </button>
+                
+                @if (!string.IsNullOrEmpty(backupResult))
+                {
+                    <div class="alert @(backupResult.StartsWith("Error") ? "alert-danger bg-danger text-white border-0" : "alert-success border-0") py-2 small fw-medium mt-auto mb-0" role="alert" style="word-break: break-all;">
+                        <i class="bi @(backupResult.StartsWith("Error") ? "bi-info-circle" : "bi-check-circle") me-2"></i> @backupResult
+                    </div>
+                }
+                else
+                {
+                    <div class="text-white-50 small mt-auto mb-0 bg-secondary bg-opacity-25 py-2 px-3 rounded-3" style="font-size: 0.75rem;">
+                        <i class="bi bi-folder-fill me-1 text-warning"></i> C:\Users\Documentos\backup clientes\
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Planes> planes = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private Planes editingPlan = new();
+    
+    private bool isBackingUp = false;
+    private string backupResult = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlanes();
+    }
+
+    private async Task LoadPlanes()
+    {
+        isLoading = true;
+        planes = await SettingsService.GetPlanesAsync();
+        isLoading = false;
+    }
+
+    private void ShowAddForm()
+    {
+        editingPlan = new Planes();
+        showForm = true;
+    }
+
+    private void EditPlan(Planes p)
+    {
+        editingPlan = new Planes
+        {
+            IdPlan = p.IdPlan,
+            PlanNombre = p.PlanNombre,
+            Precio = p.Precio
+        };
+        showForm = true;
+    }
+
+    private async Task SavePlan()
+    {
+        if (editingPlan.IdPlan == 0)
+            await SettingsService.AddPlanAsync(editingPlan);
+        else
+            await SettingsService.UpdatePlanAsync(editingPlan);
+            
+        showForm = false;
+        await LoadPlanes();
+    }
+
+    private async Task DeletePlan(int id)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "¿Eliminar este plan permanentemente? Advertencia: Los clientes actuales que tengan este plan podrían experimentar errores en los reportes financieros si este ID se borra de la tabla maestra.");
+        if (confirmed)
+        {
+            await SettingsService.DeletePlanAsync(id);
+            await LoadPlanes();
+        }
+    }
+    
+    private async Task StartBackup()
+    {
+        isBackingUp = true;
+        backupResult = "";
+        StateHasChanged();
+        
+        await Task.Delay(1250); // Feedback visual premium
+        string result = SettingsService.CreateBackup();
+        
+        if(result.StartsWith("Error"))
+        {
+            backupResult = result;
+        }
+        else
+        {
+            backupResult = $"¡Respaldado Exitoso! Guardado en: {result}";
+        }
+        
+        isBackingUp = false;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,140 @@
+@page "/reports"
+@using GymDashboard.Models
+@using GymDashboard.Services
+@inject ReportesService ReportesService
+
+<PageTitle>Reportes Financieros</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h3 class="mb-0 fw-bold text-dark"><i class="bi bi-graph-up-arrow text-primary me-2"></i> Reportes Financieros</h3>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <label class="text-muted fw-semibold small">Desde:</label>
+        <input type="date" class="form-control form-control-sm border shadow-sm" style="width: 140px;" @bind="fechaDesde" @bind:event="oninput" />
+        
+        <label class="text-muted fw-semibold small ms-2">Hasta:</label>
+        <input type="date" class="form-control form-control-sm border shadow-sm" style="width: 140px;" @bind="fechaHasta" @bind:event="oninput" />
+        
+        <div class="input-group input-group-sm ms-md-3 shadow-sm" style="width: 250px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar cliente..." @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearch" />
+        </div>
+        
+        <button class="btn btn-sm btn-dark ms-2 shadow-sm px-3" @onclick="LoadReportes"><i class="bi bi-funnel me-1"></i> Filtrar</button>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead class="table-light sticky-top" style="z-index: 10;">
+                    <tr>
+                        <th class="ps-4 py-3 text-muted fw-semibold border-bottom-0">Comprobante</th>
+                        <th class="py-3 text-muted fw-semibold border-bottom-0">Cliente</th>
+                        <th class="py-3 text-muted fw-semibold border-bottom-0">Plan Contratado</th>
+                        <th class="py-3 text-muted fw-semibold text-end border-bottom-0">Fecha Registro</th>
+                        <th class="pe-4 py-3 text-end text-muted fw-semibold border-bottom-0">Monto Cobrado</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @foreach (var p in pagos)
+                    {
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle rounded-pill px-3 py-2">
+                                    <i class="bi bi-receipt me-1"></i> #@p.IdPago.ToString("D5")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px;">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-dark d-block">@p.Nombre @p.Apellido</span>
+                                        <small class="text-muted">ID: @p.IdCliente</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border px-2 py-1"><i class="bi bi-tag me-1 text-muted"></i> @p.PlanNombre</span>
+                            </td>
+                            <td class="text-end text-muted small">
+                                <i class="bi bi-calendar-check me-1"></i>@(p.FechaRegistro?.ToString("dd MMM yyyy, HH:mm") ?? "-")
+                            </td>
+                            <td class="pe-4 text-end">
+                                <span class="fs-6 fw-bold text-success">+$@(p.Monto.ToString("N2"))</span>
+                            </td>
+                        </tr>
+                    }
+                    @if (isLoading)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="spinner-border text-primary opacity-75" role="status" style="width: 3rem; height: 3rem;"></div>
+                                <span class="d-block mt-3 text-muted">Calculando ingresos...</span>
+                            </td>
+                        </tr>
+                    }
+                    else if (!pagos.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-cash-stack fs-1 d-block mb-3 text-light"></i>
+                                No se encontraron ingresos cobrados en este período
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+        <div>
+            <span class="d-block text-white-50 text-uppercase small fw-bold tracking-wide mb-1"><i class="bi bi-receipt me-1"></i> Comprobantes Emitidos</span>
+            <span class="fs-3 fw-bold text-white">@pagos.Count</span>
+        </div>
+        <div class="text-end">
+            <span class="d-block text-white-50 text-uppercase small fw-bold tracking-wide mb-1">Total Recaudado</span>
+            <h2 class="mb-0 fw-bold text-success" style="font-size: 2.5rem; text-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                $@TotalRecaudado.ToString("N2")
+            </h2>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<PagoReporte> pagos = new();
+    private bool isLoading = true;
+    
+    private DateTime? fechaDesde = null;
+    private DateTime? fechaHasta = null;
+    private string searchTerm = "";
+
+    private decimal TotalRecaudado => pagos.Sum(p => p.Monto);
+
+    protected override async Task OnInitializedAsync()
+    {
+        fechaDesde = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        fechaHasta = DateTime.Now.Date;
+        await LoadReportes();
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadReportes();
+        }
+    }
+
+    private async Task LoadReportes()
+    {
+        isLoading = true;
+        pagos = await ReportesService.GetReportePagosAsync(fechaDesde, fechaHasta, searchTerm);
+        isLoading = false;
+    }
+}

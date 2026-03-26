@@ -1,0 +1,424 @@
+@page "/clients"
+@using GymDashboard.Models
+@using GymDashboard.Services
+@inject ClienteService ClienteService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Clientes</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Clientes</h2>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="input-group shadow-sm" style="width: 300px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por DNI o Nombre..." @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearchKey" />
+        </div>
+        <button class="btn btn-primary shadow-sm text-nowrap" @onclick="ShowAddClientForm">
+            <i class="bi bi-person-plus me-2"></i> Nuevo Cliente
+        </button>
+    </div>
+</div>
+
+@if (isLoading && !clientes.Any())
+{
+    <div class="d-flex flex-column justify-content-center align-items-center py-5" style="min-height: 50vh;">
+        <div class="spinner-border text-primary opacity-75" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <h5 class="mt-4 text-muted fw-normal">Sincronizando base de datos...</h5>
+    </div>
+}
+else if (showForm)
+{
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-semibold">@(editingCliente.IdCliente == 0 ? "Añadir Nuevo Cliente" : "Editar / Renovar Cliente")</h5>
+        </div>
+        <div class="card-body p-4">
+            <EditForm Model="@editingCliente" OnValidSubmit="SaveClient">
+                <DataAnnotationsValidator />
+                
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Documento</label>
+                        <InputText @bind-Value="editingCliente.Documento" class="form-control bg-light" placeholder="Ej. 12345678" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Nombre</label>
+                        <InputText @bind-Value="editingCliente.Nombre" class="form-control bg-light" placeholder="Juan" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Apellido</label>
+                        <InputText @bind-Value="editingCliente.Apellido" class="form-control bg-light" placeholder="Pérez" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Email</label>
+                        <InputText @bind-Value="editingCliente.Email" type="email" class="form-control bg-light" placeholder="email@ejemplo.com" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Teléfono</label>
+                        <InputText @bind-Value="editingCliente.Telefono" class="form-control bg-light" placeholder="+54 11 1234-5678" />
+                    </div>
+
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold text-muted small">Dirección</label>
+                        <InputText @bind-Value="editingCliente.Direccion" class="form-control bg-light" placeholder="Calle Falsa 123" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Fecha Nacimiento</label>
+                        <InputDate @bind-Value="editingCliente.FechaNacimiento" class="form-control bg-light" />
+                    </div>
+                    
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-semibold text-muted small">Género</label>
+                        <InputSelect @bind-Value="editingCliente.IdGenero" class="form-select bg-light">
+                            <option value="">Seleccione un género...</option>
+                            @foreach (var g in generos)
+                            {
+                                <option value="@g.IdGenero">@g.GeneroNombre</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-semibold text-muted small">Plan</label>
+                        <InputSelect @bind-Value="EditingClienteIdPlan" class="form-select bg-light">
+                            <option value="">Seleccione un plan...</option>
+                            @foreach (var p in planes)
+                            {
+                                <option value="@p.IdPlan">@p.PlanNombre - $@p.Precio</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-semibold text-muted small">Fecha Inicio Plan</label>
+                        <InputDate @bind-Value="EditingClienteFechaInicio" class="form-control bg-light" />
+                    </div>
+
+                    <div class="col-md-6 mt-3">
+                        <label class="form-label fw-semibold text-muted small">Fecha Vencimiento Plan</label>
+                        <InputDate @bind-Value="editingCliente.FechaVencimiento" class="form-control bg-light" />
+                    </div>
+
+                    <div class="col-md-12 d-flex align-items-center mt-4">
+                        <div class="form-check form-switch form-switch-lg ps-5">
+                            <InputCheckbox @bind-Value="IsActiveBool" class="form-check-input" id="activeCheck" style="transform: scale(1.5); margin-left: -2.5em; margin-top: 0;" />
+                            <label class="form-check-label ms-2" for="activeCheck">Cliente Activo</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-success px-4 shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i> Guardar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="CancelForm">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm border-0 rounded-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-muted fw-semibold">Doc/Nombre</th>
+                        <th class="py-3 text-muted fw-semibold">Contacto</th>
+                        <th class="py-3 text-muted fw-semibold">Estado</th>
+                        <th class="py-3 text-muted fw-semibold">Vencimiento</th>
+                        <th class="pe-4 py-3 text-end text-muted fw-semibold">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @foreach (var c in clientes)
+                    {
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                        <i class="bi bi-person-fill fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-dark d-block">@c.Nombre @c.Apellido</span>
+                                        <small class="text-muted">Doc: @(string.IsNullOrEmpty(c.Documento) ? "N/A" : c.Documento)</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small">
+                                    <div class="text-dark"><i class="bi bi-envelope text-muted me-2"></i> @(string.IsNullOrEmpty(c.Email) ? "-" : c.Email)</div>
+                                    <div class="text-dark mt-1"><i class="bi bi-telephone text-muted me-2"></i> @(string.IsNullOrEmpty(c.Telefono) ? "-" : c.Telefono)</div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (c.Estado == 1)
+                                {
+                                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success fw-normal px-3 py-2">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary fw-normal px-3 py-2">Inactivo</span>
+                                }
+                            </td>
+                            <td>
+                                @if(c.FechaVencimiento.HasValue && c.FechaVencimiento.Value < DateTime.Now.Date)
+                                {
+                                    <span class="text-danger fw-semibold"><i class="bi bi-x-circle me-1"></i>@(c.FechaVencimiento?.ToString("dd MMM yyyy"))</span>
+                                }
+                                else if(c.FechaVencimiento.HasValue && c.FechaVencimiento.Value <= DateTime.Now.Date.AddDays(7))
+                                {
+                                    <span class="text-warning fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>@(c.FechaVencimiento?.ToString("dd MMM yyyy"))</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@(c.FechaVencimiento?.ToString("dd MMM yyyy") ?? "-")</span>
+                                }
+                            </td>
+                            <td class="text-end pe-4 text-nowrap">
+                                <button class="btn btn-sm btn-light text-success me-1 border shadow-sm" @onclick="() => RenovarPlan(c)" title="Renovar Plan">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light text-warning me-1 border shadow-sm" @onclick="() => ToggleEstadoClient(c)" title="@(c.Estado == 1 ? "Suspender Cliente" : "Reactivar Cliente")">
+                                    <i class="bi @(c.Estado == 1 ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light text-primary me-1 border shadow-sm" @onclick="() => EditClient(c)" title="Editar Cliente">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light text-danger border shadow-sm" @onclick="() => DeleteClient(c)" title="Eliminar Definitivamente">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!clientes.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-search fs-1 d-block mb-3 text-light"></i>
+                                No se encontraron clientes
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Cliente> clientes = new();
+    private List<Genero> generos = new();
+    private List<Planes> planes = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private bool isRenovating = false;
+    private Cliente editingCliente = new();
+
+    private string searchTerm = "";
+    private System.Timers.Timer? searchTimer;
+
+    private bool IsActiveBool
+    {
+        get => editingCliente.Estado == 1;
+        set => editingCliente.Estado = value ? 1 : 0;
+    }
+
+    private int? EditingClienteIdPlan
+    {
+        get => editingCliente.IdPlan;
+        set
+        {
+            editingCliente.IdPlan = value;
+            RecalcularVencimiento();
+        }
+    }
+
+    private DateTime? EditingClienteFechaInicio
+    {
+        get => editingCliente.FechaInicio;
+        set
+        {
+            editingCliente.FechaInicio = value;
+            RecalcularVencimiento();
+        }
+    }
+
+    private void RecalcularVencimiento()
+    {
+        if (editingCliente.FechaInicio.HasValue)
+        {
+            var dias = GetDiasPorPlan(editingCliente.IdPlan);
+            editingCliente.FechaVencimiento = editingCliente.FechaInicio.Value.AddDays(dias);
+        }
+    }
+    
+    private int GetDiasPorPlan(int? idPlan)
+    {
+        var plan = planes.FirstOrDefault(p => p.IdPlan == idPlan);
+        if (plan == null) return 30; // Default por seguridad
+        
+        var nombre = plan.PlanNombre?.ToLower() ?? "";
+        if (nombre.Contains("clase") || nombre.Contains("dia") || nombre.Contains("día")) return 1;
+        if (nombre.Contains("semana")) return 7;
+        if (nombre.Contains("anual") || nombre.Contains("año")) return 365;
+        if (nombre.Contains("trimestral")) return 90;
+        
+        return 30; // "mensual"
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        searchTimer = new System.Timers.Timer(400);
+        searchTimer.Elapsed += async (s, e) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadClients();
+            });
+        };
+        searchTimer.AutoReset = false;
+
+        await LoadClients();
+    }
+
+    private void HandleSearchKey(KeyboardEventArgs e)
+    {
+        searchTimer?.Stop();
+        searchTimer?.Start();
+    }
+
+    private async Task LoadClients()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        clientes = await ClienteService.GetClientesAsync(searchTerm);
+        if (!generos.Any()) generos = await ClienteService.GetGenerosAsync();
+        if (!planes.Any()) planes = await ClienteService.GetPlanesAsync();
+        
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ShowAddClientForm()
+    {
+        editingCliente = new Cliente
+        {
+            FechaInicio = DateTime.Now.Date,
+            FechaVencimiento = DateTime.Now.Date.AddDays(30),
+            Estado = 1
+        };
+        isRenovating = false;
+        showForm = true;
+    }
+
+    private void RenovarPlan(Cliente c)
+    {
+        var start = c.FechaVencimiento.HasValue && c.FechaVencimiento.Value > DateTime.Now.Date 
+            ? c.FechaVencimiento.Value 
+            : DateTime.Now.Date;
+            
+        var dias = GetDiasPorPlan(c.IdPlan);
+
+        editingCliente = new Cliente
+        {
+            IdCliente = c.IdCliente,
+            Documento = c.Documento,
+            Nombre = c.Nombre,
+            Apellido = c.Apellido,
+            FechaNacimiento = c.FechaNacimiento,
+            IdGenero = c.IdGenero,
+            Direccion = c.Direccion,
+            Telefono = c.Telefono,
+            Email = c.Email,
+            IdPlan = c.IdPlan,
+            FechaInicio = start,
+            FechaVencimiento = start.AddDays(dias),
+            FechaRegistro = c.FechaRegistro,
+            Estado = 1,
+            NotaAdicional = c.NotaAdicional,
+            Huella = c.Huella
+        };
+        isRenovating = true;
+        showForm = true;
+    }
+
+    private void EditClient(Cliente c)
+    {
+        editingCliente = new Cliente
+        {
+            IdCliente = c.IdCliente,
+            Documento = c.Documento,
+            Nombre = c.Nombre,
+            Apellido = c.Apellido,
+            FechaNacimiento = c.FechaNacimiento,
+            IdGenero = c.IdGenero,
+            Direccion = c.Direccion,
+            Telefono = c.Telefono,
+            Email = c.Email,
+            IdPlan = c.IdPlan,
+            FechaInicio = c.FechaInicio,
+            FechaVencimiento = c.FechaVencimiento,
+            FechaRegistro = c.FechaRegistro,
+            Estado = c.Estado,
+            NotaAdicional = c.NotaAdicional,
+            Huella = c.Huella
+        };
+        isRenovating = false;
+        showForm = true;
+    }
+
+    private async Task SaveClient()
+    {
+        if (editingCliente.IdCliente == 0)
+        {
+            await ClienteService.AddClienteAsync(editingCliente);
+        }
+        else if (isRenovating)
+        {
+            await ClienteService.RenovarClienteAsync(editingCliente);
+        }
+        else
+        {
+            await ClienteService.UpdateClienteAsync(editingCliente);
+        }
+
+        showForm = false;
+        await LoadClients();
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+    }
+
+    private async Task ToggleEstadoClient(Cliente c)
+    {
+        c.Estado = c.Estado == 1 ? 0 : 1;
+        await ClienteService.UpdateClienteAsync(c);
+        await LoadClients();
+    }
+
+    private async Task DeleteClient(Cliente c)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás completamente seguro de que deseas ELIMINAR a {c.Nombre} {c.Apellido}? Esta acción borrará al cliente de la base de datos de forma permanente.");
+        if (confirmed)
+        {
+            await ClienteService.DeleteClienteAsync(c.IdCliente);
+            await LoadClients();
+        }
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+    }
+}

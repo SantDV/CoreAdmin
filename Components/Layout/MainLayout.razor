@@ -1,0 +1,203 @@
+@inherits LayoutComponentBase
+@using GymDashboard.Services
+@inject AuthService AuthService
+@implements IDisposable
+
+@if (AuthService.CurrentUser == null)
+{
+    <!-- Pantalla de Login -->
+    <GymDashboard.Components.Pages.Login />
+}
+else
+{
+    <!-- Pantalla Principal Protegida -->
+    <div class="d-flex bg-light w-100" style="height: 100vh; overflow: hidden; background-color: #f8fafc !important;">
+        <!-- Sleek Modern Sidebar -->
+        <div class="text-white d-flex flex-column transition-sidebar shadow-lg position-relative" 
+             style="height: 100vh; width: @SidebarWidth; min-width: @SidebarWidth; overflow-x: hidden; z-index: 1040; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-right: 1px solid rgba(255,255,255,0.05);">
+            
+            <!-- Header & Toggle (Fixed Height) -->
+            <div class="d-flex align-items-center p-3 mb-2 flex-shrink-0" style="min-height: 70px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                @if (isSidebarCollapsed)
+                {
+                    <button class="btn btn-link text-white text-opacity-75 p-0 w-100 d-flex justify-content-center align-items-center hover-text-white transition-colors" @onclick="ToggleSidebar">
+                        <i class="bi bi-list fs-2"></i>
+                    </button>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
+                        <i class="bi bi-activity text-primary fs-3 me-2 text-shadow-glow"></i>
+                        <span class="fs-5 fw-bolder tracking-wide text-nowrap text-white">GymManager</span>
+                    </div>
+                    <button class="btn btn-link text-white text-opacity-50 p-0 ms-2 hover-text-white transition-colors" @onclick="ToggleSidebar">
+                        <i class="bi bi-chevron-bar-left fs-4"></i>
+                    </button>
+                }
+            </div>
+            
+            <!-- Navigation Links (Dynamic Height with Scroll protection) -->
+            <div class="flex-grow-1 overflow-y-auto overflow-x-hidden px-3 mt-2 custom-scrollbar">
+                <ul class="nav flex-column gap-2 mb-4">
+                    <li class="nav-item" title="Inicio">
+                        <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="" Match="NavLinkMatch.All">
+                            <i class="bi bi-house-door @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                            @if (!isSidebarCollapsed) { <span class="fw-medium">Inicio</span> }
+                        </NavLink>
+                    </li>
+                    <li class="nav-item" title="Clientes">
+                        <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="clients">
+                            <i class="bi bi-people @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                            @if (!isSidebarCollapsed) { <span class="fw-medium">Clientes</span> }
+                        </NavLink>
+                    </li>
+                    <li class="nav-item" title="Reportes y Estadísticas">
+                        <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="reports">
+                            <i class="bi bi-graph-up-arrow @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                            @if (!isSidebarCollapsed) { <span class="fw-medium">Reportes</span> }
+                        </NavLink>
+                    </li>
+                    
+                    @if (AuthService.CurrentUser?.IdRol == 0)
+                    {
+                        <li class="nav-item mt-3 pt-3 border-top border-secondary border-opacity-25" title="Panel de Administrador">
+                            @if (!isSidebarCollapsed) { <span class="px-3 text-uppercase text-white-50 fw-bold d-block mb-2 text-truncate" style="font-size: 0.65rem; letter-spacing: 1px;">Admin</span> }
+                            
+                            <div class="d-flex flex-column gap-2">
+                                <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="employees" title="Seguridad">
+                                    <i class="bi bi-shield-lock @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                    @if (!isSidebarCollapsed) { <span class="fw-medium">Seguridad</span> }
+                                </NavLink>
+                                
+                                <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="settings" title="Ajustes Generales">
+                                    <i class="bi bi-gear-fill @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                    @if (!isSidebarCollapsed) { <span class="fw-medium">Configuración</span> }
+                                </NavLink>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+            
+            <!-- User Profile & Logout (Anchored solidly to the bottom forever) -->
+            <div class="p-3 flex-shrink-0" style="background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
+                <div class="d-flex align-items-center @(isSidebarCollapsed ? "justify-content-center" : "")">
+                    <div class="bg-primary bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 40px; height: 40px; min-width: 40px;">
+                        <span class="fw-bold fs-6">@(AuthService.CurrentUser?.NombreUsuario?.FirstOrDefault().ToString().ToUpper() ?? "U")</span>
+                    </div>
+                    @if (!isSidebarCollapsed)
+                    {
+                        <div class="ms-3 overflow-hidden">
+                            <div class="fw-bold text-white text-truncate" style="font-size: 0.9rem;">@AuthService.CurrentUser!.NombreUsuario</div>
+                            <div class="text-white-50 text-truncate" style="font-size: 0.75rem;">
+                                @(AuthService.CurrentUser.IdRol == 0 ? "Administrador" : "Empleado")
+                            </div>
+                        </div>
+                    }
+                </div>
+                @if (!isSidebarCollapsed)
+                {
+                    <button class="btn btn-sm w-100 mt-3 d-flex justify-content-center align-items-center border-0 transition-colors" 
+                            style="background: rgba(239, 68, 68, 0.15); color: #fca5a5;" 
+                            @onclick="AuthService.Logout" title="Cerrar Sesión"
+                            onmouseover="this.style.background='rgba(239, 68, 68, 0.25)'; this.style.color='#fef2f2';"
+                            onmouseout="this.style.background='rgba(239, 68, 68, 0.15)'; this.style.color='#fca5a5';">
+                        <i class="bi bi-box-arrow-left me-2"></i> <span class="fw-medium">Cerrar Sesión</span>
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-link p-0 w-100 mt-3 d-flex justify-content-center align-items-center transition-colors" 
+                            style="color: #fca5a5;" 
+                            @onclick="AuthService.Logout" title="Cerrar Sesión"
+                            onmouseover="this.style.color='#fef2f2';"
+                            onmouseout="this.style.color='#fca5a5';">
+                        <i class="bi bi-power fs-4"></i>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-grow-1 d-flex flex-column overflow-hidden position-relative bg-light">
+            <!-- Glassmorphism decorative background glow -->
+            <div class="position-absolute top-0 start-0 w-100" style="height: 200px; background: linear-gradient(180deg, rgba(200,210,225,0.4) 0%, rgba(248,249,250,0) 100%); z-index: 0; pointer-events: none;"></div>
+            
+            <nav class="navbar navbar-light px-4 py-3 d-flex align-items-center position-relative mb-2" style="z-index: 1;">
+                <span class="navbar-brand mb-0 h4 fw-bolder" style="color: #1e293b; letter-spacing: -0.5px;">Panel de Control</span>
+                <div class="ms-auto d-flex align-items-center">
+                    <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill border-0 fw-medium">
+                        <i class="bi bi-calendar3 me-2 text-primary"></i>@DateTime.Now.ToString("dd MMM yyyy")
+                    </span>
+                </div>
+            </nav>
+            
+            <!-- Real content space -->
+            <div class="px-4 pb-4 flex-grow-1 overflow-auto position-relative custom-scrollbar" style="z-index: 1;">
+                @Body
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .transition-sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .transition-colors {
+            transition: all 0.2s ease;
+        }
+        .text-shadow-glow {
+            text-shadow: 0 0 12px rgba(13, 110, 253, 0.6);
+        }
+        .hover-text-white:hover {
+            color: white !important;
+        }
+        
+        /* Premium NavLink styling */
+        .nav-link.active {
+            background-color: rgba(13, 110, 253, 0.15) !important;
+            color: #60a5fa !important; /* vibrante azul claro */
+            font-weight: 600;
+        }
+        .nav-link:hover:not(.active) {
+            background-color: rgba(255,255,255,0.05);
+            color: white !important;
+        }
+        
+        /* Custom scrollbar for sleekness across all internal panels */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5); 
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.8); 
+        }
+    </style>
+}
+
+@code {
+    private bool isSidebarCollapsed = false;
+    private string SidebarWidth => isSidebarCollapsed ? "80px" : "260px";
+
+    private void ToggleSidebar()
+    {
+        isSidebarCollapsed = !isSidebarCollapsed;
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= StateHasChanged;
+    }
+}
