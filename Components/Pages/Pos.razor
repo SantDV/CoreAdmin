@@ -1,0 +1,301 @@
+@page "/pos"
+@using CoreAdmin.Models
+@using CoreAdmin.Services
+@inject InventoryService InventoryService
+@inject VentaService VentaService
+@inject ClienteService ClienteService
+@inject AuthService AuthService
+@inject PrinterService PrinterService
+@inject SettingsService SettingsService
+@inject IJSRuntime JS
+
+<PageTitle>Punto de Venta (POS)</PageTitle>
+
+<div class="container-fluid py-3" style="height: calc(100vh - 100px); overflow: hidden;">
+    <div class="row h-100 g-3">
+        <!-- Products Column -->
+        <div class="col-lg-8 h-100 d-flex flex-column">
+            <div class="card shadow-sm border-0 rounded-4 flex-grow-1 d-flex flex-column overflow-hidden">
+                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-cart3 text-primary me-2"></i> Punto de Venta
+                        </h4>
+                        <div class="input-group shadow-sm w-50">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-0" 
+                                   placeholder="Buscar producto..." 
+                                   @bind="productSearchTerm" @bind:event="oninput" @onkeyup="HandleProductSearch" />
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 overflow-auto pb-2 custom-scrollbar">
+                        <button class="btn btn-sm @(selectedCategoryId == null ? "btn-primary" : "btn-light") text-nowrap" @onclick="() => FilterByCategory(null)">Todos</button>
+                        @foreach (var cat in categorias)
+                        {
+                            <button class="btn btn-sm @(selectedCategoryId == cat.IdCategoria ? "btn-primary" : "btn-light") text-nowrap" @onclick="() => FilterByCategory(cat.IdCategoria)">
+                                @cat.NombreCategoria
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="card-body p-4 pt-2 overflow-auto custom-scrollbar">
+                    <div class="row g-3">
+                        @foreach (var p in filteredProducts)
+                        {
+                            <div class="col-xl-3 col-md-4 col-6">
+                                <div class="card h-100 product-card border-0 shadow-sm rounded-4 text-center p-3 @(p.Stock <= 0 ? "opacity-50" : "cursor-pointer")" @onclick="() => AddToCart(p)">
+                                    <div class="product-icon bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-box fs-4"></i>
+                                    </div>
+                                    <div class="fw-bold text-dark text-truncate w-100 px-1">@p.Nombre</div>
+                                    <div class="text-primary fw-bold mb-1">$@p.PrecioVenta.ToString("N2")</div>
+                                    <div class="small">
+                                        <span class="badge @(p.Stock <= p.StockMinimo ? "bg-danger" : "bg-light text-dark") rounded-pill">
+                                            Stock: @p.Stock
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Column -->
+        <div class="col-lg-4 h-100 d-flex flex-column">
+            <div class="card shadow-sm border-0 rounded-4 flex-grow-1 d-flex flex-column overflow-hidden">
+                <div class="card-header bg-dark text-white p-4">
+                    <h5 class="mb-0 fw-bold">Mesa de Venta</h5>
+                    <p class="small mb-0 text-white-50">Resumen de productos seleccionados</p>
+                </div>
+                <div class="card-body p-0 flex-grow-1 overflow-auto custom-scrollbar">
+                    @if (!cart.Any())
+                    {
+                        <div class="text-center py-5 px-4 h-100 d-flex flex-column justify-content-center">
+                            <i class="bi bi-cart-x fs-1 text-muted mb-3"></i>
+                            <h5 class="text-muted">El carrito está vacío</h5>
+                            <p class="small text-muted">Selecciona productos de la izquierda para comenzar la venta.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var item in cart)
+                            {
+                                <li class="list-group-item p-3 border-light">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="fw-bold text-dark text-truncate" style="max-width: 70%;">@item.NombreProducto</div>
+                                        <button class="btn btn-sm text-danger p-0" @onclick="() => RemoveFromCart(item)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="input-group input-group-sm w-50">
+                                            <button class="btn btn-outline-secondary" @onclick="() => UpdateQty(item, -1)">-</button>
+                                            <input type="number" class="form-control text-center text-dark fw-bold border-secondary border-opacity-25" @bind="item.Cantidad" />
+                                            <button class="btn btn-outline-secondary" @onclick="() => UpdateQty(item, 1)">+</button>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="text-muted small d-block">$@item.PrecioUnitario.ToString("N2")</span>
+                                            <span class="fw-bold text-dark">$@item.Subtotal.ToString("N2")</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="card-footer bg-light border-0 p-4">
+                    <!-- Client Selection -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Cliente (Opcional)</label>
+                        <div class="input-group input-group-sm shadow-sm">
+                             <select class="form-select" @bind="venta.IdCliente">
+                                <option value="">Venta General (Público)</option>
+                                @foreach (var c in clientes)
+                                {
+                                    <option value="@c.IdCliente">@c.Nombre @c.Apellido</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Método de Pago</label>
+                        <div class="d-flex gap-2">
+                            @foreach (var m in new[] { "Efectivo", "Tarjeta", "Transferencia" })
+                            {
+                                <input type="radio" class="btn-check" name="payment-method" id="pay-@m" @onclick="() => venta.MetodoPago = m" checked="@(venta.MetodoPago == m)" />
+                                <label class="btn btn-sm btn-outline-dark flex-grow-1" for="pay-@m">@m</label>
+                            }
+                        </div>
+                    </div>
+
+                    <hr class="my-4 opacity-10">
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="fw-bold text-dark font-monospace">$@CartSubtotal.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted">Descuento</span>
+                        <div class="input-group input-group-sm" style="width: 100px;">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control text-end" @bind="venta.Descuento" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <span class="h5 mb-0 fw-bold">TOTAL</span>
+                        <span class="h3 mb-0 fw-bold text-primary font-monospace">$@CartTotal.ToString("N2")</span>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg w-100 rounded-4 shadow py-3 fw-bold" disabled="@(!cart.Any() || isProcessing)" @onclick="FinalizarVenta">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-check-circle me-1"></i> FINALIZAR VENTA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .product-card:hover:not(.opacity-50) {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .cursor-pointer { cursor: pointer; }
+    .tracking-wider { letter-spacing: 0.05em; }
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    /* Firefox */
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+</style>
+
+@code {
+    private List<Producto> allProducts = new();
+    private List<Producto> filteredProducts = new();
+    private List<CategoriaProducto> categorias = new();
+    private List<Cliente> clientes = new();
+    private List<DetalleVenta> cart = new();
+    
+    private Venta venta = new() { MetodoPago = "Efectivo", Descuento = 0 };
+    private string productSearchTerm = "";
+    private int? selectedCategoryId = null;
+    private bool isProcessing = false;
+
+    private decimal CartSubtotal => cart.Sum(i => i.Subtotal);
+    private decimal CartTotal => CartSubtotal - venta.Descuento;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categorias = await InventoryService.GetCategoriasAsync();
+        allProducts = await InventoryService.GetProductosAsync();
+        clientes = (await ClienteService.GetClientesAsync(limit: 1000)).ToList();
+        FilterProducts();
+    }
+
+    private void HandleProductSearch(KeyboardEventArgs e)
+    {
+        FilterProducts();
+    }
+
+    private void FilterByCategory(int? id)
+    {
+        selectedCategoryId = id;
+        FilterProducts();
+    }
+
+    private void FilterProducts()
+    {
+        filteredProducts = allProducts.Where(p => 
+            (string.IsNullOrEmpty(productSearchTerm) || p.Nombre.Contains(productSearchTerm, StringComparison.OrdinalIgnoreCase) || p.Codigo.Contains(productSearchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (selectedCategoryId == null || p.IdCategoria == selectedCategoryId)
+        ).ToList();
+    }
+
+    private void AddToCart(Producto p)
+    {
+        if (p.Stock <= 0) return;
+
+        var existing = cart.FirstOrDefault(i => i.IdProducto == p.IdProducto);
+        if (existing != null)
+        {
+            if (existing.Cantidad < p.Stock)
+            {
+                existing.Cantidad++;
+                existing.Subtotal = existing.Cantidad * existing.PrecioUnitario;
+            }
+        }
+        else
+        {
+            cart.Add(new DetalleVenta {
+                IdProducto = p.IdProducto,
+                NombreProducto = p.Nombre,
+                Cantidad = 1,
+                PrecioUnitario = p.PrecioVenta,
+                Subtotal = p.PrecioVenta
+            });
+        }
+    }
+
+    private void RemoveFromCart(DetalleVenta item)
+    {
+        cart.Remove(item);
+    }
+
+    private void UpdateQty(DetalleVenta item, int delta)
+    {
+        var prod = allProducts.First(p => p.IdProducto == item.IdProducto);
+        var newQty = item.Cantidad + delta;
+        
+        if (newQty > 0 && newQty <= prod.Stock)
+        {
+            item.Cantidad = newQty;
+            item.Subtotal = item.Cantidad * item.PrecioUnitario;
+        }
+    }
+
+    private async Task FinalizarVenta()
+    {
+        if (!cart.Any()) return;
+        
+        isProcessing = true;
+        try {
+            venta.Detalles = cart;
+            venta.Subtotal = CartSubtotal;
+            venta.Total = CartTotal;
+            venta.IdUsuario = AuthService.CurrentUser?.IdUsuario ?? 1;
+
+            string numVenta = await VentaService.ProcessVentaAsync(venta);
+            
+            await JS.InvokeVoidAsync("alert", $"Venta {numVenta} procesada con éxito.");
+            
+            // Reset
+            cart.Clear();
+            venta = new Venta { MetodoPago = "Efectivo", Descuento = 0 };
+            allProducts = await InventoryService.GetProductosAsync();
+            FilterProducts();
+        } catch (Exception ex) {
+            await JS.InvokeVoidAsync("alert", $"Error al procesar: {ex.Message}");
+        } finally {
+            isProcessing = false;
+        }
+    }
+}

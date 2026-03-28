@@ -177,4 +177,29 @@ CREATE INDEX IF NOT EXISTS "idx_venta_cliente" ON "VENTA" (
 CREATE INDEX IF NOT EXISTS "idx_venta_fecha" ON "VENTA" (
 	"fecha_venta"
 );
+CREATE INDEX IF NOT EXISTS "idx_cliente_documento" ON "CLIENTE" (
+    "documento"
+);
+CREATE INDEX IF NOT EXISTS "idx_cliente_nombre_completo" ON "CLIENTE" (
+    "nombre",
+    "apellido"
+);
+CREATE INDEX IF NOT EXISTS "idx_cliente_estado" ON "CLIENTE" (
+    "estado"
+);
+CREATE INDEX IF NOT EXISTS "idx_pagos_cliente" ON "pagos" (
+    "id_cliente"
+);
+CREATE INDEX IF NOT EXISTS "idx_pagos_fecha" ON "pagos" (
+    "fecha_registro"
+);
+CREATE INDEX IF NOT EXISTS "idx_pagos_estado" ON "pagos" (
+    "estado"
+);
+CREATE INDEX IF NOT EXISTS "idx_gastos_fecha" ON "GASTOS" (
+    "fecha_registro"
+);
+CREATE INDEX IF NOT EXISTS "idx_gastos_estado" ON "GASTOS" (
+    "estado"
+);
 COMMIT;

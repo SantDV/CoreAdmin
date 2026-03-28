@@ -7,9 +7,11 @@ namespace CoreAdmin.Services;
 public class GastoService
 {
     private readonly string _connectionString = DatabaseInitializer.ConnectionString;
+    private readonly DashboardCacheService _cache;
 
-    public GastoService()
+    public GastoService(DashboardCacheService cache)
     {
+        _cache = cache;
         DefaultTypeMap.MatchNamesWithUnderscores = true;
     }
 
@@ -50,6 +52,7 @@ public class GastoService
             INSERT INTO GASTOS (descripcion, monto, categoria, fecha_registro, estado)
             VALUES (@Descripcion, @Monto, @Categoria, @FechaRegistro, 1)";
         await connection.ExecuteAsync(query, gasto);
+        _cache.Invalidate();
     }
 
     public async Task UpdateGastoAsync(Gasto gasto)
@@ -63,6 +66,7 @@ public class GastoService
                 estado = @Estado
             WHERE id_gasto = @IdGasto";
         await connection.ExecuteAsync(query, gasto);
+        _cache.Invalidate();
     }
 
     public async Task AnularGastoAsync(int idGasto)
@@ -70,6 +74,7 @@ public class GastoService
         using var connection = new SqliteConnection(_connectionString);
         var query = "UPDATE GASTOS SET estado = 0 WHERE id_gasto = @Id";
         await connection.ExecuteAsync(query, new { Id = idGasto });
+        _cache.Invalidate();
     }
 
     public async Task<decimal> GetTotalGastosMesAsync()

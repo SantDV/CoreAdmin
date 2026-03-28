@@ -50,4 +50,40 @@ public class ReportesService
 
         return (await connection.QueryAsync<PagoReporte>(query, parameters)).ToList();
     }
+
+    public async Task<byte[]> GenerateExcelReportAsync(List<PagoReporte> data)
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Reporte Financiero");
+
+        // Headers
+        worksheet.Cell(1, 1).Value = "ID Comprobante";
+        worksheet.Cell(1, 2).Value = "Cliente";
+        worksheet.Cell(1, 3).Value = "Plan";
+        worksheet.Cell(1, 4).Value = "Fecha";
+        worksheet.Cell(1, 5).Value = "Monto";
+
+        // Styling headers
+        var headerRange = worksheet.Range(1, 1, 1, 5);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+
+        // Data
+        for (int i = 0; i < data.Count; i++)
+        {
+            var row = i + 2;
+            var item = data[i];
+            worksheet.Cell(row, 1).Value = item.IdPago;
+            worksheet.Cell(row, 2).Value = $"{item.Nombre} {item.Apellido}";
+            worksheet.Cell(row, 3).Value = item.PlanNombre;
+            worksheet.Cell(row, 4).Value = item.FechaRegistro;
+            worksheet.Cell(row, 5).Value = item.Monto;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
 }

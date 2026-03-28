@@ -67,6 +67,28 @@ public static class DatabaseInitializer
             )");
 
             AddColumnIfNotExist(connection, "pagos", "estado", "INTEGER DEFAULT 1");
+
+            // Índices para optimización de rendimiento
+            CreateIndexIfNotExist(connection, "idx_cliente_documento", "CLIENTE", "documento");
+            CreateIndexIfNotExist(connection, "idx_cliente_nombre_completo", "CLIENTE", "nombre, apellido");
+            CreateIndexIfNotExist(connection, "idx_cliente_estado", "CLIENTE", "estado");
+            CreateIndexIfNotExist(connection, "idx_pagos_cliente", "pagos", "id_cliente");
+            CreateIndexIfNotExist(connection, "idx_pagos_fecha", "pagos", "fecha_registro");
+            CreateIndexIfNotExist(connection, "idx_pagos_estado", "pagos", "estado");
+            CreateIndexIfNotExist(connection, "idx_gastos_fecha", "GASTOS", "fecha_registro");
+            CreateIndexIfNotExist(connection, "idx_gastos_estado", "GASTOS", "estado");
+        }
+    }
+
+    private static void CreateIndexIfNotExist(SqliteConnection connection, string indexName, string tableName, string columns)
+    {
+        var indexExists = connection.ExecuteScalar<int>($@"
+            SELECT count(*) FROM sqlite_master 
+            WHERE type = 'index' AND name = '{indexName}'") > 0;
+
+        if (!indexExists)
+        {
+            connection.Execute($"CREATE INDEX IF NOT EXISTS {indexName} ON {tableName} ({columns})");
         }
     }
 

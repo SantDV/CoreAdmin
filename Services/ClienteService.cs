@@ -7,9 +7,11 @@ namespace CoreAdmin.Services;
 public class ClienteService
 {
     private readonly string _connectionString = DatabaseInitializer.ConnectionString;
+    private readonly DashboardCacheService _cache;
 
-    public ClienteService()
+    public ClienteService(DashboardCacheService cache)
     {
+        _cache = cache;
         DefaultTypeMap.MatchNamesWithUnderscores = true; 
     }
 
@@ -83,6 +85,9 @@ public class ClienteService
 
     public async Task<DashboardStats> GetDashboardStatsAsync()
     {
+        var cached = _cache.GetCachedStats();
+        if (cached != null) return cached;
+
         using var connection = new SqliteConnection(_connectionString);
         var hoy = DateTime.Now.Date.ToString("yyyy-MM-dd");
         var inicioSemana = DateTime.Now.Date.AddDays(-(int)DateTime.Now.DayOfWeek).ToString("yyyy-MM-dd");
@@ -105,7 +110,9 @@ public class ClienteService
                 (SELECT COALESCE(SUM(monto), 0) FROM GASTOS WHERE estado = 1 AND date(fecha_registro) >= date(@InicioMes)) AS EgresosMes
         ";
 
-        return await connection.QuerySingleAsync<DashboardStats>(query, new { Hoy = hoy, InicioSemana = inicioSemana, InicioMes = inicioMes, InicioAnio = inicioAnio, EnUnaSemana = enUnaSemana });
+        var stats = await connection.QuerySingleAsync<DashboardStats>(query, new { Hoy = hoy, InicioSemana = inicioSemana, InicioMes = inicioMes, InicioAnio = inicioAnio, EnUnaSemana = enUnaSemana });
+        _cache.SetCachedStats(stats);
+        return stats;
     }
 
     public async Task<List<Cliente>> GetClientesPorVencerAsync()
@@ -156,6 +163,7 @@ public class ClienteService
                 }, transaction);
 
                 transaction.Commit();
+                _cache.Invalidate();
             }
             catch { transaction.Rollback(); throw; }
         }
@@ -199,6 +207,7 @@ public class ClienteService
                 }, transaction);
 
                 transaction.Commit();
+                _cache.Invalidate();
             }
             catch { transaction.Rollback(); throw; }
         }
@@ -215,6 +224,7 @@ public class ClienteService
             using var connection = new SqliteConnection(_connectionString);
             var query = "DELETE FROM CLIENTE WHERE id_cliente = @Id";
             await connection.ExecuteAsync(query, new { Id = id });
+            _cache.Invalidate();
         }
         catch (Exception ex)
         {
@@ -249,6 +259,7 @@ public class ClienteService
                 vencimiento_apto_medico = @VencimientoAptoMedico
             WHERE id_cliente = @IdCliente";
         await connection.ExecuteAsync(query, cliente);
+        _cache.Invalidate();
     }
 
     public async Task AnularPagoAsync(int idPago)
@@ -256,5 +267,6 @@ public class ClienteService
         using var connection = new SqliteConnection(_connectionString);
         var query = "UPDATE pagos SET estado = 0 WHERE id_pago = @Id";
         await connection.ExecuteAsync(query, new { Id = idPago });
+        _cache.Invalidate();
     }
 }

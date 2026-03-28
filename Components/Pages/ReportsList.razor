@@ -7,6 +7,7 @@
 @inject PrinterService PrinterService
 @inject SettingsService SettingsService
 @inject IJSRuntime JS
+@inject FileService FileService
 
 <PageTitle>Reportes Financieros</PageTitle>
 
@@ -38,6 +39,11 @@
             <button class="btn btn-sm btn-dark ms-2 shadow-sm px-3"
                     @onclick="() => LoadReportes()">
                 <i class="bi bi-funnel me-1"></i> Filtrar
+            </button>
+
+            <button class="btn btn-sm btn-outline-success ms-2 shadow-sm px-3"
+                    @onclick="ExportarExcel" disabled="@isLoading">
+                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
             </button>
         </div>
     </div>
@@ -298,6 +304,43 @@
         {
             await ClienteService.AnularPagoAsync(pago.IdPago);
             await LoadReportes();
+        }
+    }
+
+    private async Task ExportarExcel()
+    {
+        try 
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Obtener TODOS los datos filtrados (sin límite de paginación para el reporte total)
+            var allData = await ReportesService.GetReportePagosAsync(fechaDesde, fechaHasta, searchTerm, 100000, 0);
+            
+            if (!allData.Any())
+            {
+                await JS.InvokeVoidAsync("alert", "No hay datos para exportar con los filtros seleccionados.");
+                return;
+            }
+
+            var excelBytes = await ReportesService.GenerateExcelReportAsync(allData);
+            
+            string defaultFileName = $"Reporte_Financiero_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+            var savedPath = await FileService.SaveFileAsync(defaultFileName, excelBytes);
+
+            if (!string.IsNullOrEmpty(savedPath))
+            {
+                await JS.InvokeVoidAsync("alert", $"Reporte exportado con éxito en: {savedPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Error al exportar: {ex.Message}");
+        }
+        finally 
+        {
+            isLoading = false;
+            StateHasChanged();
         }
     }
 }

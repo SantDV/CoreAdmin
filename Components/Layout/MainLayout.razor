@@ -63,6 +63,24 @@ else
                             @if (!isSidebarCollapsed) { <span class="fw-medium">Egresos</span> }
                         </NavLink>
                     </li>
+
+                    <li class="nav-item mt-3 pt-3 border-top border-secondary border-opacity-25" title="Tienda y POS">
+                        @if (!isSidebarCollapsed) { <span class="px-3 text-uppercase text-white-50 fw-bold d-block mb-2 text-truncate" style="font-size: 0.65rem; letter-spacing: 1px;">Tienda</span> }
+                        <div class="d-flex flex-column gap-2">
+                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="pos">
+                                <i class="bi bi-cart-check @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Venta (POS)</span> }
+                            </NavLink>
+                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="inventory">
+                                <i class="bi bi-box-seam @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Inventario</span> }
+                            </NavLink>
+                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="sales">
+                                <i class="bi bi-receipt @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Historial Ventas</span> }
+                            </NavLink>
+                        </div>
+                    </li>
                     
                     @if (AuthService.CurrentUser?.IdRol == 0)
                     {

@@ -1,0 +1,220 @@
+@page "/sales"
+@using CoreAdmin.Models
+@using CoreAdmin.Services
+@inject VentaService VentaService
+@inject AuthService AuthService
+@inject IJSRuntime JS
+
+<PageTitle>Historial de Ventas</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-receipt text-primary me-2"></i> Historial de Ventas POS
+        </h2>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-3">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Desde</label>
+                    <input type="date" class="form-control" @bind="fechaDesde" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Hasta</label>
+                    <input type="date" class="form-control" @bind="fechaHasta" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" placeholder="Nro Venta o Cliente..." @bind="searchTerm" />
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-dark w-100" @onclick="LoadVentas">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Table -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small text-uppercase fw-bold">
+                    <tr>
+                        <th class="ps-4 py-3">Nro Venta</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Vendedor</th>
+                        <th>Método</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (isLoading)
+                    {
+                        <tr><td colspan="8" class="text-center py-5">Cargando ventas...</td></tr>
+                    }
+                    else if (!ventas.Any())
+                    {
+                        <tr><td colspan="8" class="text-center py-5">No se encontraron ventas.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var v in ventas)
+                        {
+                            <tr class="@(v.Estado == "Anulada" ? "opacity-50" : "")">
+                                <td class="ps-4 fw-bold">@v.NumeroVenta</td>
+                                <td class="small">@v.FechaVenta.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@(string.IsNullOrEmpty(v.NombreCliente?.Trim()) ? "Público General" : v.NombreCliente)</td>
+                                <td>@v.NombreUsuario</td>
+                                <td>@v.MetodoPago</td>
+                                <td class="text-end fw-bold">$@v.Total.ToString("N2")</td>
+                                <td class="text-center">
+                                    <span class="badge @(v.Estado == "Completada" ? "bg-success" : "bg-danger") px-2">
+                                        @v.Estado
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-primary me-1" title="Ver Detalles" @onclick="() => VerDetalles(v)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    @if (v.Estado != "Anulada")
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" title="Anular Venta" @onclick="() => ConfirmAnular(v)">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalles -->
+@if (showDetailsModal && selectedVenta != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-dark text-white pt-4 px-4 pb-3">
+                    <h5 class="modal-title fw-bold">Detalle de Venta: @selectedVenta.NumeroVenta</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => showDetailsModal = false"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <p class="mb-1 text-muted small text-uppercase fw-bold">Cliente</p>
+                            <p class="fw-bold">@(string.IsNullOrEmpty(selectedVenta.NombreCliente?.Trim()) ? "Público General" : selectedVenta.NombreCliente)</p>
+                        </div>
+                        <div class="col-6 text-end">
+                            <p class="mb-1 text-muted small text-uppercase fw-bold">Fecha y Hora</p>
+                            <p class="fw-bold">@selectedVenta.FechaVenta.ToString("dd/MM/yyyy HH:mm:ss")</p>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-sm mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3 py-2">Producto</th>
+                                    <th class="text-center">Cant.</th>
+                                    <th class="text-end">P. Unit</th>
+                                    <th class="text-end pe-3">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var d in detalles)
+                                {
+                                    <tr>
+                                        <td class="ps-3 py-2">@d.NombreProducto</td>
+                                        <td class="text-center">@d.Cantidad</td>
+                                        <td class="text-end">$@d.PrecioUnitario.ToString("N2")</td>
+                                        <td class="text-end pe-3">$@d.Subtotal.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                @if (selectedVenta.Descuento > 0)
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-end py-2">Subtotal</td>
+                                        <td class="text-end pe-3 fw-bold">$@selectedVenta.Subtotal.ToString("N2")</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end py-2 text-danger">Descuento</td>
+                                        <td class="text-end pe-3 text-danger">-$@selectedVenta.Descuento.ToString("N2")</td>
+                                    </tr>
+                                }
+                                <tr class="table-dark">
+                                    <td colspan="3" class="text-end ps-3 py-2 fw-bold text-uppercase">Total</td>
+                                    <td class="text-end pe-3 fw-bold">$@selectedVenta.Total.ToString("N2")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button class="btn btn-outline-dark px-4" @onclick="() => showDetailsModal = false">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Venta> ventas = new();
+    private List<DetalleVenta> detalles = new();
+    private bool isLoading = true;
+    private DateTime fechaDesde = DateTime.Now.AddDays(-30);
+    private DateTime fechaHasta = DateTime.Now;
+    private string searchTerm = "";
+
+    private bool showDetailsModal = false;
+    private Venta? selectedVenta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVentas();
+    }
+
+    private async Task LoadVentas()
+    {
+        isLoading = true;
+        ventas = await VentaService.GetVentasAsync(fechaDesde, fechaHasta, searchTerm);
+        isLoading = false;
+    }
+
+    private async Task VerDetalles(Venta v)
+    {
+        selectedVenta = v;
+        detalles = await VentaService.GetDetallesVentaAsync(v.IdVenta);
+        showDetailsModal = true;
+    }
+
+    private async Task ConfirmAnular(Venta v)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"¿Estás seguro de anular la venta {v.NumeroVenta}? Esta acción revertirá el stock de los productos.");
+        if (confirm)
+        {
+            try {
+                await VentaService.AnularVentaAsync(v.IdVenta, AuthService.CurrentUser?.IdUsuario ?? 1);
+                await LoadVentas();
+            } catch (Exception ex) {
+                await JS.InvokeVoidAsync("alert", ex.Message);
+            }
+        }
+    }
+}
