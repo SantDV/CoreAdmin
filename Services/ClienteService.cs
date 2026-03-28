@@ -30,27 +30,39 @@ public class ClienteService
             fecha_registro AS FechaRegistro,
             estado AS Estado,
             nota_adicional AS NotaAdicional,
-            huella AS Huella
+            huella AS Huella,
+            tipo_sangre AS TipoSangre,
+            alergias AS Alergias,
+            enfermedades_cronicas AS EnfermedadesCronicas,
+            contacto_emergencia_nombre AS ContactoEmergenciaNombre,
+            contacto_emergencia_telefono AS ContactoEmergenciaTelefono,
+            vencimiento_apto_medico AS VencimientoAptoMedico
         FROM CLIENTE";
 
-    public async Task<List<Cliente>> GetClientesAsync(string searchTerm = "")
+    public async Task<List<Cliente>> GetClientesAsync(string searchTerm = "", int limit = 50, int offset = 0)
     {
         using var connection = new SqliteConnection(_connectionString);
+        string query;
+        var parameters = new DynamicParameters();
+        parameters.Add("Limit", limit);
+        parameters.Add("Offset", offset);
+
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            var query = SelectClienteScript + " ORDER BY id_cliente DESC";
-            return (await connection.QueryAsync<Cliente>(query)).ToList();
+            query = SelectClienteScript + " ORDER BY id_cliente DESC LIMIT @Limit OFFSET @Offset";
         }
         else
         {
-            var query = SelectClienteScript + @"
+            query = SelectClienteScript + @"
                 WHERE documento LIKE @Search 
                    OR nombre LIKE @Search 
                    OR apellido LIKE @Search 
                    OR email LIKE @Search
-                ORDER BY id_cliente DESC";
-            return (await connection.QueryAsync<Cliente>(query, new { Search = $"%{searchTerm}%" })).ToList();
+                ORDER BY id_cliente DESC LIMIT @Limit OFFSET @Offset";
+            parameters.Add("Search", $"%{searchTerm}%");
         }
+        
+        return (await connection.QueryAsync<Cliente>(query, parameters)).ToList();
     }
 
     public async Task<List<Genero>> GetGenerosAsync()
@@ -88,7 +100,9 @@ public class ClienteService
                 (SELECT count(*) FROM CLIENTE WHERE date(fecha_registro) >= date(@InicioMes)) AS RegistrosMes,
                 (SELECT count(*) FROM CLIENTE WHERE date(fecha_registro) >= date(@InicioAnio)) AS RegistrosAnio,
                 (SELECT count(*) FROM CLIENTE WHERE estado = 1 AND date(fecha_vencimiento) >= date(@Hoy) AND date(fecha_vencimiento) <= date(@EnUnaSemana)) AS PlanesPorVencer,
-                (SELECT count(*) FROM CLIENTE WHERE estado = 1 AND date(fecha_vencimiento) < date(@Hoy)) AS PlanesVencidos
+                (SELECT count(*) FROM CLIENTE WHERE estado = 1 AND date(fecha_vencimiento) < date(@Hoy)) AS PlanesVencidos,
+                (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE estado = 1 AND date(fecha_registro) >= date(@InicioMes)) AS IngresosMes,
+                (SELECT COALESCE(SUM(monto), 0) FROM GASTOS WHERE estado = 1 AND date(fecha_registro) >= date(@InicioMes)) AS EgresosMes
         ";
 
         return await connection.QuerySingleAsync<DashboardStats>(query, new { Hoy = hoy, InicioSemana = inicioSemana, InicioMes = inicioMes, InicioAnio = inicioAnio, EnUnaSemana = enUnaSemana });
@@ -113,75 +127,99 @@ public class ClienteService
 
     public async Task AddClienteAsync(Cliente cliente)
     {
-        cliente.FechaRegistro = DateTime.Now;
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-        using var transaction = connection.BeginTransaction();
-        try
+        try 
         {
-            var queryCliente = @"
-                INSERT INTO CLIENTE (documento, nombre, apellido, fecha_nacimiento, id_genero, direccion, telefono, email, id_plan, fecha_inicio, fecha_vencimiento, fecha_registro, estado, nota_adicional, huella)
-                VALUES (@Documento, @Nombre, @Apellido, @FechaNacimiento, @IdGenero, @Direccion, @Telefono, @Email, @IdPlan, @FechaInicio, @FechaVencimiento, @FechaRegistro, @Estado, @NotaAdicional, @Huella);
-                SELECT last_insert_rowid();";
-            
-            int idCliente = await connection.ExecuteScalarAsync<int>(queryCliente, cliente, transaction);
+            cliente.FechaRegistro = DateTime.Now;
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                var queryCliente = @"
+                    INSERT INTO CLIENTE (documento, nombre, apellido, fecha_nacimiento, id_genero, direccion, telefono, email, id_plan, fecha_inicio, fecha_vencimiento, fecha_registro, estado, nota_adicional, huella, tipo_sangre, alergias, enfermedades_cronicas, contacto_emergencia_nombre, contacto_emergencia_telefono, vencimiento_apto_medico)
+                    VALUES (@Documento, @Nombre, @Apellido, @FechaNacimiento, @IdGenero, @Direccion, @Telefono, @Email, @IdPlan, @FechaInicio, @FechaVencimiento, @FechaRegistro, @Estado, @NotaAdicional, @Huella, @TipoSangre, @Alergias, @EnfermedadesCronicas, @ContactoEmergenciaNombre, @ContactoEmergenciaTelefono, @VencimientoAptoMedico);
+                    SELECT last_insert_rowid();";
+                
+                int idCliente = await connection.ExecuteScalarAsync<int>(queryCliente, cliente, transaction);
 
-            var montoPlan = await connection.ExecuteScalarAsync<decimal?>("SELECT precio FROM PLANES WHERE id_plan = @IdPlan", new { IdPlan = cliente.IdPlan }, transaction) ?? 0;
+                var montoPlan = await connection.ExecuteScalarAsync<decimal?>("SELECT precio FROM PLANES WHERE id_plan = @IdPlan", new { IdPlan = cliente.IdPlan }, transaction) ?? 0;
 
-            var queryPago = @"
-                INSERT INTO pagos (monto, id_plan, id_cliente, fecha_registro)
-                VALUES (@Monto, @IdPlan, @IdCliente, @FechaRegistro)";
-            
-            await connection.ExecuteAsync(queryPago, new {
-                Monto = montoPlan,
-                IdPlan = cliente.IdPlan,
-                IdCliente = idCliente,
-                FechaRegistro = cliente.FechaRegistro
-            }, transaction);
+                var queryPago = @"
+                    INSERT INTO pagos (monto, id_plan, id_cliente, fecha_registro, estado)
+                    VALUES (@Monto, @IdPlan, @IdCliente, @FechaRegistro, 1)";
+                
+                await connection.ExecuteAsync(queryPago, new {
+                    Monto = montoPlan,
+                    IdPlan = cliente.IdPlan,
+                    IdCliente = idCliente,
+                    FechaRegistro = cliente.FechaRegistro
+                }, transaction);
 
-            transaction.Commit();
+                transaction.Commit();
+            }
+            catch { transaction.Rollback(); throw; }
         }
-        catch { transaction.Rollback(); throw; }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al registrar cliente: " + ex.Message);
+        }
     }
 
     public async Task RenovarClienteAsync(Cliente cliente)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-        using var transaction = connection.BeginTransaction();
-        try
+        try 
         {
-            var queryUpdate = @"
-                UPDATE CLIENTE SET 
-                    documento = @Documento, nombre = @Nombre, apellido = @Apellido, fecha_nacimiento = @FechaNacimiento,
-                    id_genero = @IdGenero, direccion = @Direccion, telefono = @Telefono, email = @Email,
-                    id_plan = @IdPlan, fecha_inicio = @FechaInicio, fecha_vencimiento = @FechaVencimiento,
-                    estado = @Estado, nota_adicional = @NotaAdicional, huella = @Huella
-                WHERE id_cliente = @IdCliente";
-            await connection.ExecuteAsync(queryUpdate, cliente, transaction);
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                var queryUpdate = @"
+                    UPDATE CLIENTE SET 
+                        documento = @Documento, nombre = @Nombre, apellido = @Apellido, fecha_nacimiento = @FechaNacimiento,
+                        id_genero = @IdGenero, direccion = @Direccion, telefono = @Telefono, email = @Email,
+                        id_plan = @IdPlan, fecha_inicio = @FechaInicio, fecha_vencimiento = @FechaVencimiento,
+                        estado = @Estado, nota_adicional = @NotaAdicional, huella = @Huella,
+                        tipo_sangre = @TipoSangre, alergias = @Alergias, enfermedades_cronicas = @EnfermedadesCronicas,
+                        contacto_emergencia_nombre = @ContactoEmergenciaNombre, contacto_emergencia_telefono = @ContactoEmergenciaTelefono,
+                        vencimiento_apto_medico = @VencimientoAptoMedico
+                    WHERE id_cliente = @IdCliente";
+                await connection.ExecuteAsync(queryUpdate, cliente, transaction);
 
-            var montoPlan = await connection.ExecuteScalarAsync<decimal?>("SELECT precio FROM PLANES WHERE id_plan = @IdPlan", new { IdPlan = cliente.IdPlan }, transaction) ?? 0;
+                var montoPlan = await connection.ExecuteScalarAsync<decimal?>("SELECT precio FROM PLANES WHERE id_plan = @IdPlan", new { IdPlan = cliente.IdPlan }, transaction) ?? 0;
 
-            var queryPago = @"
-                INSERT INTO pagos (monto, id_plan, id_cliente)
-                VALUES (@Monto, @IdPlan, @IdCliente)";
-            
-            await connection.ExecuteAsync(queryPago, new {
-                Monto = montoPlan,
-                IdPlan = cliente.IdPlan,
-                IdCliente = cliente.IdCliente
-            }, transaction);
+                var queryPago = @"
+                    INSERT INTO pagos (monto, id_plan, id_cliente, estado)
+                    VALUES (@Monto, @IdPlan, @IdCliente, 1)";
+                
+                await connection.ExecuteAsync(queryPago, new {
+                    Monto = montoPlan,
+                    IdPlan = cliente.IdPlan,
+                    IdCliente = cliente.IdCliente
+                }, transaction);
 
-            transaction.Commit();
+                transaction.Commit();
+            }
+            catch { transaction.Rollback(); throw; }
         }
-        catch { transaction.Rollback(); throw; }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al renovar cliente: " + ex.Message);
+        }
     }
 
     public async Task DeleteClienteAsync(int id)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        var query = "DELETE FROM CLIENTE WHERE id_cliente = @Id";
-        await connection.ExecuteAsync(query, new { Id = id });
+        try 
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            var query = "DELETE FROM CLIENTE WHERE id_cliente = @Id";
+            await connection.ExecuteAsync(query, new { Id = id });
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al eliminar cliente: " + ex.Message);
+        }
     }
 
     public async Task UpdateClienteAsync(Cliente cliente)
@@ -202,8 +240,21 @@ public class ClienteService
                 fecha_vencimiento = @FechaVencimiento,
                 estado = @Estado,
                 nota_adicional = @NotaAdicional,
-                huella = @Huella
+                huella = @Huella,
+                tipo_sangre = @TipoSangre,
+                alergias = @Alergias,
+                enfermedades_cronicas = @EnfermedadesCronicas,
+                contacto_emergencia_nombre = @ContactoEmergenciaNombre,
+                contacto_emergencia_telefono = @ContactoEmergenciaTelefono,
+                vencimiento_apto_medico = @VencimientoAptoMedico
             WHERE id_cliente = @IdCliente";
         await connection.ExecuteAsync(query, cliente);
+    }
+
+    public async Task AnularPagoAsync(int idPago)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        var query = "UPDATE pagos SET estado = 0 WHERE id_pago = @Id";
+        await connection.ExecuteAsync(query, new { Id = idPago });
     }
 }

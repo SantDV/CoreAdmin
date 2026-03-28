@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS "CLIENTE" (
 	"estado"	INTEGER DEFAULT 1,
 	"nota_adicional"	TEXT,
 	"huella"	TEXT,
+	"tipo_sangre"	TEXT,
+	"alergias"	TEXT,
+	"enfermedades_cronicas"	TEXT,
+	"contacto_emergencia_nombre"	TEXT,
+	"contacto_emergencia_telefono"	TEXT,
+	"vencimiento_apto_medico"	TEXT,
 	PRIMARY KEY("id_cliente" AUTOINCREMENT),
 	FOREIGN KEY("id_genero") REFERENCES "GENERO"("id_genero"),
 	FOREIGN KEY("id_plan") REFERENCES "PLANES"("id_plan")
@@ -139,9 +145,19 @@ CREATE TABLE IF NOT EXISTS "pagos" (
 	"id_cliente"	int,
 	"fecha_registro"	TEXT DEFAULT (datetime('now', 'localtime')),
 	"nota_adicional"	TEXT,
+	"estado"	INTEGER DEFAULT 1,
 	PRIMARY KEY("id_pago" AUTOINCREMENT),
 	FOREIGN KEY("id_cliente") REFERENCES "CLIENTE"("id_cliente"),
 	FOREIGN KEY("id_plan") REFERENCES "PLANES"("id_plan")
+);
+CREATE TABLE IF NOT EXISTS "GASTOS" (
+	"id_gasto"	INTEGER,
+	"descripcion"	TEXT NOT NULL,
+	"monto"	NUMERIC(10, 2) NOT NULL,
+	"categoria"	TEXT,
+	"fecha_registro"	TEXT DEFAULT (datetime('now', 'localtime')),
+	"estado"	INTEGER DEFAULT 1,
+	PRIMARY KEY("id_gasto" AUTOINCREMENT)
 );
 CREATE INDEX IF NOT EXISTS "idx_detalle_venta" ON "DETALLE_VENTA" (
 	"id_venta"

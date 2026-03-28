@@ -57,6 +57,12 @@ else
                             @if (!isSidebarCollapsed) { <span class="fw-medium">Reportes</span> }
                         </NavLink>
                     </li>
+                    <li class="nav-item" title="Control de Gastos">
+                        <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="expenses">
+                            <i class="bi bi-cart-dash @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                            @if (!isSidebarCollapsed) { <span class="fw-medium">Egresos</span> }
+                        </NavLink>
+                    </li>
                     
                     @if (AuthService.CurrentUser?.IdRol == 0)
                     {

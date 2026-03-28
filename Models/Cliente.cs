@@ -18,4 +18,10 @@ public class Cliente
     public int Estado { get; set; } = 1;
     public string? NotaAdicional { get; set; }
     public string? Huella { get; set; }
+    public string? TipoSangre { get; set; }
+    public string? Alergias { get; set; }
+    public string? EnfermedadesCronicas { get; set; }
+    public string? ContactoEmergenciaNombre { get; set; }
+    public string? ContactoEmergenciaTelefono { get; set; }
+    public DateTime? VencimientoAptoMedico { get; set; }
 }

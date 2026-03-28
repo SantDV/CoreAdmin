@@ -8,7 +8,7 @@ public class ReportesService
 {
     private readonly string _connectionString = DatabaseInitializer.ConnectionString;
 
-    public async Task<List<PagoReporte>> GetReportePagosAsync(DateTime? desde = null, DateTime? hasta = null, string searchTerm = "")
+    public async Task<List<PagoReporte>> GetReportePagosAsync(DateTime? desde = null, DateTime? hasta = null, string searchTerm = "", int limit = 100, int offset = 0)
     {
         using var connection = new SqliteConnection(_connectionString);
         var query = @"
@@ -23,9 +23,11 @@ public class ReportesService
             FROM pagos p
             LEFT JOIN CLIENTE c ON p.id_cliente = c.id_cliente
             LEFT JOIN PLANES pl ON p.id_plan = pl.id_plan
-            WHERE 1=1 ";
+            WHERE p.estado = 1 ";
 
         var parameters = new DynamicParameters();
+        parameters.Add("Limit", limit);
+        parameters.Add("Offset", offset);
 
         if (desde.HasValue)
         {
@@ -44,7 +46,7 @@ public class ReportesService
             parameters.Add("Search", $"%{searchTerm}%");
         }
 
-        query += " ORDER BY p.id_pago DESC";
+        query += " ORDER BY p.id_pago DESC LIMIT @Limit OFFSET @Offset";
 
         return (await connection.QueryAsync<PagoReporte>(query, parameters)).ToList();
     }

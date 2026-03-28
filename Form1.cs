@@ -29,6 +29,7 @@ public partial class Form1 : Form
         services.AddSingleton<ReportesService>();
         services.AddSingleton<SettingsService>();
         services.AddSingleton<PrinterService>();
+        services.AddSingleton<GastoService>();
 
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 

@@ -42,10 +42,43 @@ public static class DatabaseInitializer
                 ""usar_red"" INTEGER DEFAULT 0
             )");
             
+            
             if (connection.ExecuteScalar<int>("SELECT count(*) FROM CONFIGURACION_IMPRESORA") == 0)
             {
                 connection.Execute("INSERT INTO CONFIGURACION_IMPRESORA (nombre_impresora, ip_impresora, puerto_impresora, usar_red) VALUES ('XPrinter XP-V320N', '192.168.1.100', 9100, 1)");
             }
+
+            // Migración para Ficha Médica en tabla CLIENTE
+            AddColumnIfNotExist(connection, "CLIENTE", "tipo_sangre", "TEXT");
+            AddColumnIfNotExist(connection, "CLIENTE", "alergias", "TEXT");
+            AddColumnIfNotExist(connection, "CLIENTE", "enfermedades_cronicas", "TEXT");
+            AddColumnIfNotExist(connection, "CLIENTE", "contacto_emergencia_nombre", "TEXT");
+            AddColumnIfNotExist(connection, "CLIENTE", "contacto_emergencia_telefono", "TEXT");
+            AddColumnIfNotExist(connection, "CLIENTE", "vencimiento_apto_medico", "TEXT");
+
+            // Migración para Gastos y Anulaciones
+            connection.Execute(@"CREATE TABLE IF NOT EXISTS ""GASTOS"" (
+                ""id_gasto"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                ""descripcion"" TEXT NOT NULL,
+                ""monto"" NUMERIC(10, 2) NOT NULL,
+                ""categoria"" TEXT,
+                ""fecha_registro"" TEXT DEFAULT (datetime('now', 'localtime')),
+                ""estado"" INTEGER DEFAULT 1
+            )");
+
+            AddColumnIfNotExist(connection, "pagos", "estado", "INTEGER DEFAULT 1");
+        }
+    }
+
+    private static void AddColumnIfNotExist(SqliteConnection connection, string tableName, string columnName, string columnType)
+    {
+        var columnExists = connection.ExecuteScalar<int>($@"
+            SELECT count(*) FROM pragma_table_info('{tableName}') 
+            WHERE name = '{columnName}'") > 0;
+
+        if (!columnExists)
+        {
+            connection.Execute($"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnType}");
         }
     }
 

@@ -34,43 +34,61 @@ public class EmpleadoService
     
     public async Task AddEmpleadoAsync(Empleado empleado)
     {
-        empleado.FechaRegistro = DateTime.Now;
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-        using var transaction = connection.BeginTransaction();
-        try
+        try 
         {
-            var insertUserQuery = @"
-                INSERT INTO USUARIO (nombre_usuario, clave, id_rol) 
-                VALUES (@NombreUsuario, @Clave, @IdRol);
-                SELECT last_insert_rowid();";
-            int userId = await connection.ExecuteScalarAsync<int>(insertUserQuery, empleado, transaction);
+            empleado.FechaRegistro = DateTime.Now;
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                // Hash password before saving
+                string hashedPass = AuthService.HashPassword(empleado.Clave ?? "1234");
 
-            empleado.IdUsuario = userId;
-            var insertEmpleadoQuery = @"
-                INSERT INTO EMPLEADO (documento, nombre, apellido, direccion, telefono, id_usuario, estado, fecha_registro)
-                VALUES (@Documento, @Nombre, @Apellido, @Direccion, @Telefono, @IdUsuario, @Estado, @FechaRegistro)";
-            await connection.ExecuteAsync(insertEmpleadoQuery, empleado, transaction);
+                var queryUsuario = @"
+                    INSERT INTO USUARIO (nombre_usuario, clave, id_rol)
+                    VALUES (@NombreUsuario, @Clave, @IdRol);
+                    SELECT last_insert_rowid();";
+                
+                int idUsuario = await connection.ExecuteScalarAsync<int>(queryUsuario, new { 
+                    empleado.NombreUsuario, 
+                    Clave = hashedPass, 
+                    empleado.IdRol 
+                }, transaction);
 
-            transaction.Commit();
+                empleado.IdUsuario = idUsuario;
+                var insertEmpleadoQuery = @"
+                    INSERT INTO EMPLEADO (documento, nombre, apellido, direccion, telefono, id_usuario, estado, fecha_registro)
+                    VALUES (@Documento, @Nombre, @Apellido, @Direccion, @Telefono, @IdUsuario, @Estado, @FechaRegistro)";
+                await connection.ExecuteAsync(insertEmpleadoQuery, empleado, transaction);
+
+                transaction.Commit();
+            }
+            catch { transaction.Rollback(); throw; }
         }
-        catch { transaction.Rollback(); throw; }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al añadir empleado: " + ex.Message);
+        }
     }
 
-    public async Task UpdateEmpleadoAsync(Empleado empleado)
+    public async Task UpdateEmpleadoAsync(Empleado e)
     {
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
         try
         {
-            var updateUserQuery = @"
-                UPDATE USUARIO SET 
-                    nombre_usuario = @NombreUsuario, 
-                    clave = @Clave, 
-                    id_rol = @IdRol 
-                WHERE id_usuario = @IdUsuario";
-            await connection.ExecuteAsync(updateUserQuery, empleado, transaction);
+            // Hash password before updating
+            string hashedPass = AuthService.HashPassword(e.Clave ?? "1234");
+
+            var queryUser = "UPDATE USUARIO SET nombre_usuario = @NombreUsuario, clave = @Clave, id_rol = @IdRol WHERE id_usuario = @IdUsuario";
+            await connection.ExecuteAsync(queryUser, new { 
+                e.NombreUsuario, 
+                Clave = hashedPass, 
+                e.IdRol, 
+                e.IdUsuario 
+            }, transaction);
 
             var updateEmpleadoQuery = @"
                 UPDATE EMPLEADO SET 
@@ -81,7 +99,7 @@ public class EmpleadoService
                     telefono = @Telefono,
                     estado = @Estado
                 WHERE id_empleado = @IdEmpleado";
-            await connection.ExecuteAsync(updateEmpleadoQuery, empleado, transaction);
+            await connection.ExecuteAsync(updateEmpleadoQuery, e, transaction);
 
             transaction.Commit();
         }
@@ -90,21 +108,28 @@ public class EmpleadoService
 
     public async Task DeleteEmpleadoAsync(int idEmpleado, int? idUsuario)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-        using var transaction = connection.BeginTransaction();
-        try
+        try 
         {
-            var deleteEmpleado = "DELETE FROM EMPLEADO WHERE id_empleado = @IdEmpleado";
-            await connection.ExecuteAsync(deleteEmpleado, new { IdEmpleado = idEmpleado }, transaction);
-
-            if (idUsuario.HasValue)
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+            using var transaction = connection.BeginTransaction();
+            try
             {
-                var deleteUsuario = "DELETE FROM USUARIO WHERE id_usuario = @IdUsuario";
-                await connection.ExecuteAsync(deleteUsuario, new { IdUsuario = idUsuario.Value }, transaction);
+                var deleteEmpleado = "DELETE FROM EMPLEADO WHERE id_empleado = @IdEmpleado";
+                await connection.ExecuteAsync(deleteEmpleado, new { IdEmpleado = idEmpleado }, transaction);
+
+                if (idUsuario.HasValue)
+                {
+                    var deleteUsuario = "DELETE FROM USUARIO WHERE id_usuario = @IdUsuario";
+                    await connection.ExecuteAsync(deleteUsuario, new { IdUsuario = idUsuario.Value }, transaction);
+                }
+                transaction.Commit();
             }
-            transaction.Commit();
+            catch { transaction.Rollback(); throw; }
         }
-        catch { transaction.Rollback(); throw; }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al eliminar empleado: " + ex.Message);
+        }
     }
 }

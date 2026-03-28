@@ -1,0 +1,198 @@
+@page "/expenses"
+@using CoreAdmin.Models
+@using CoreAdmin.Services
+@inject GastoService GastoService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Egresos</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Control de Gastos (Egresos)</h2>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="input-group shadow-sm" style="width: 300px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar gasto..." @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearchKey" />
+        </div>
+        <button class="btn btn-danger shadow-sm text-nowrap" @onclick="ShowAddGastoForm">
+            <i class="bi bi-dash-circle me-2"></i> Nuevo Gasto
+        </button>
+    </div>
+</div>
+
+@if (showForm)
+{
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-semibold">@(editingGasto.IdGasto == 0 ? "Registrar Nuevo Gasto" : "Editar Gasto")</h5>
+        </div>
+        <div class="card-body p-4">
+            <EditForm Model="@editingGasto" OnValidSubmit="SaveGasto">
+                <DataAnnotationsValidator />
+                
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold text-muted small">Descripción / Motivo</label>
+                        <InputText @bind-Value="editingGasto.Descripcion" class="form-control bg-light" placeholder="Ej. Pago de Alquiler Marzo" />
+                        <ValidationMessage For="@(() => editingGasto.Descripcion)" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Monto ($)</label>
+                        <InputNumber @bind-Value="editingGasto.Monto" class="form-control bg-light" />
+                        <ValidationMessage For="@(() => editingGasto.Monto)" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Categoría</label>
+                        <InputSelect @bind-Value="editingGasto.Categoria" class="form-select bg-light">
+                            <option value="">Seleccione una categoría...</option>
+                            <option value="Sueldos">Sueldos / Profesores</option>
+                            <option value="Servicios">Servicios (Luz, Agua, Internet)</option>
+                            <option value="Alquiler">Alquiler</option>
+                            <option value="Mantenimiento">Mantenimiento / Limpieza</option>
+                            <option value="Equipamiento">Equipamiento / Máquinas</option>
+                            <option value="Seguridad">Seguros / Seguridad</option>
+                            <option value="Marketing">Marketing / Publicidad</option>
+                            <option value="Otros">Otros</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Fecha</label>
+                        <InputDate @bind-Value="editingGasto.FechaRegistro" class="form-control bg-light" />
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-danger px-4 shadow-sm">
+                        <i class="bi bi-check-circle me-1"></i> Guardar Gasto
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="CancelForm">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm border-0 rounded-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-muted fw-semibold">Fecha</th>
+                        <th class="py-3 text-muted fw-semibold">Descripción</th>
+                        <th class="py-3 text-muted fw-semibold">Categoría</th>
+                        <th class="py-3 text-muted fw-semibold text-end">Monto</th>
+                        <th class="pe-4 py-3 text-end text-muted fw-semibold">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @foreach (var g in gastos)
+                    {
+                        <tr>
+                            <td class="ps-4">@g.FechaRegistro?.ToString("dd/MM/yyyy")</td>
+                            <td class="fw-bold">@g.Descripcion</td>
+                            <td><span class="badge bg-light text-dark border fw-normal">@g.Categoria</span></td>
+                            <td class="text-end fw-bold text-danger">-$@g.Monto.ToString("N2")</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-light text-primary me-2 border shadow-sm" @onclick="() => EditGasto(g)" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light text-danger border shadow-sm" @onclick="() => AnularGasto(g)" title="Anular">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!gastos.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-receipt fs-1 d-block mb-3 text-light"></i>
+                                No se encontraron gastos registrados
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Gasto> gastos = new();
+    private bool showForm = false;
+    private Gasto editingGasto = new();
+    private string searchTerm = "";
+    private System.Timers.Timer? searchTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        searchTimer = new System.Timers.Timer(400);
+        searchTimer.Elapsed += async (s, e) => { await InvokeAsync(async () => await LoadGastos()); };
+        searchTimer.AutoReset = false;
+        await LoadGastos();
+    }
+
+    private async Task LoadGastos()
+    {
+        gastos = await GastoService.GetGastosAsync(searchTerm);
+        StateHasChanged();
+    }
+
+    private void HandleSearchKey(KeyboardEventArgs e)
+    {
+        searchTimer?.Stop();
+        searchTimer?.Start();
+    }
+
+    private void ShowAddGastoForm()
+    {
+        editingGasto = new Gasto { FechaRegistro = DateTime.Now };
+        showForm = true;
+    }
+
+    private void EditGasto(Gasto g)
+    {
+        editingGasto = new Gasto 
+        { 
+            IdGasto = g.IdGasto, 
+            Descripcion = g.Descripcion, 
+            Monto = g.Monto, 
+            Categoria = g.Categoria, 
+            FechaRegistro = g.FechaRegistro, 
+            Estado = g.Estado 
+        };
+        showForm = true;
+    }
+
+    private async Task SaveGasto()
+    {
+        try
+        {
+            if (editingGasto.IdGasto == 0)
+                await GastoService.AddGastoAsync(editingGasto);
+            else
+                await GastoService.UpdateGastoAsync(editingGasto);
+
+            showForm = false;
+            await LoadGastos();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Error al guardar el gasto: " + ex.Message);
+        }
+    }
+
+    private async Task AnularGasto(Gasto g)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Deseas anular el gasto '{g.Descripcion}'?");
+        if (confirmed)
+        {
+            await GastoService.AnularGastoAsync(g.IdGasto);
+            await LoadGastos();
+        }
+    }
+
+    private void CancelForm() => showForm = false;
+}

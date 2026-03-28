@@ -91,6 +91,49 @@ else if (stats != null)
         </div>
     </div>
 
+    <!-- Financial Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-success text-white">
+                <div class="card-body py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 fw-semibold mb-1">Ingresos del Mes</h6>
+                            <h2 class="mb-0 fw-bold">$@stats.IngresosMes.ToString("N2")</h2>
+                        </div>
+                        <i class="bi bi-cash-stack fs-1 opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-danger text-white">
+                <div class="card-body py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 fw-semibold mb-1">Egresos del Mes</h6>
+                            <h2 class="mb-0 fw-bold">$@stats.EgresosMes.ToString("N2")</h2>
+                        </div>
+                        <i class="bi bi-cart-dash fs-1 opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 @(stats.BalanceMes >= 0 ? "bg-primary" : "bg-dark") text-white">
+                <div class="card-body py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 fw-semibold mb-1">Balance Neto</h6>
+                            <h2 class="mb-0 fw-bold">$@stats.BalanceMes.ToString("N2")</h2>
+                        </div>
+                        <i class="bi bi-bank fs-1 opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Analytics & Activity Row -->
     <div class="row g-4">
         <!-- Detalles de Registro -->

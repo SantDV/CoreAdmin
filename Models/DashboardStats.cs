@@ -13,4 +13,8 @@ public class DashboardStats
 
     public int PlanesPorVencer { get; set; } 
     public int PlanesVencidos { get; set; }
+
+    public decimal IngresosMes { get; set; }
+    public decimal EgresosMes { get; set; }
+    public decimal BalanceMes => IngresosMes - EgresosMes;
 }

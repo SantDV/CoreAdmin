@@ -9,6 +9,12 @@ public class SettingsService
 {
     private readonly string _connectionString = DatabaseInitializer.ConnectionString;
 
+    public SettingsService()
+    {
+        // Asegura que id_plan mapee automáticamente a IdPlan sin alias explícitos si hay guiones bajos
+        DefaultTypeMap.MatchNamesWithUnderscores = true;
+    }
+
     // Orchestrates underlying WinForms IO manipulation to rescue SQLite files on demand
     public string CreateBackup()
     {
@@ -44,29 +50,48 @@ public class SettingsService
     public async Task<List<Planes>> GetPlanesAsync()
     {
         using var connection = new SqliteConnection(_connectionString);
-        var query = "SELECT id_plan AS IdPlan, plan_nombre AS PlanNombre, precio AS Precio FROM PLANES ORDER BY precio ASC";
+        var query = "SELECT id_plan, plan_nombre, precio FROM PLANES ORDER BY precio ASC";
         return (await connection.QueryAsync<Planes>(query)).ToList();
     }
 
-    public async Task AddPlanAsync(Planes plan)
+    public async Task SavePlanAsync(Planes plan)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        var query = "INSERT INTO PLANES (plan_nombre, precio) VALUES (@PlanNombre, @Precio)";
-        await connection.ExecuteAsync(query, plan);
+        try 
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            if (plan.IdPlan == 0)
+            {
+                var query = "INSERT INTO PLANES (plan_nombre, precio) VALUES (@PlanNombre, @Precio)";
+                await connection.ExecuteAsync(query, plan);
+            }
+            else
+            {
+                var query = "UPDATE PLANES SET plan_nombre = @PlanNombre, precio = @Precio WHERE id_plan = @IdPlan";
+                await connection.ExecuteAsync(query, plan);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al guardar el plan: " + ex.Message);
+        }
     }
 
-    public async Task UpdatePlanAsync(Planes plan)
+    public async Task DeletePlanAsync(int id)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        var query = "UPDATE PLANES SET plan_nombre = @PlanNombre, precio = @Precio WHERE id_plan = @IdPlan";
-        await connection.ExecuteAsync(query, plan);
-    }
-
-    public async Task DeletePlanAsync(int idPlan)
-    {
-        using var connection = new SqliteConnection(_connectionString);
-        var query = "DELETE FROM PLANES WHERE id_plan = @Id";
-        await connection.ExecuteAsync(query, new { Id = idPlan });
+        try 
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            var query = "DELETE FROM PLANES WHERE id_plan = @Id";
+            await connection.ExecuteAsync(query, new { Id = id });
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // Constraint violation
+        {
+            throw new Exception("No se puede eliminar el plan porque hay clientes asociados a él. Considere desactivarlo o cambiar los clientes de plan primero.");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error al eliminar el plan: " + ex.Message);
+        }
     }
 
     public async Task<PrinterSettings> GetPrinterSettingsAsync()

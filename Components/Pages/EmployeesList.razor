@@ -68,7 +68,7 @@ else if (showForm)
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold text-muted small">Contraseña</label>
-                        <InputText @bind-Value="editingEmpleado.Clave" class="form-control bg-light" type="text" required />
+                        <InputText @bind-Value="editingEmpleado.Clave" class="form-control bg-light" type="password" required />
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold text-muted small">Rol del Sistema</label>
@@ -231,16 +231,23 @@ else if (showForm)
 
     private async Task SaveEmpleado()
     {
-        if (editingEmpleado.IdEmpleado == 0)
+        try 
         {
-            await EmpleadoService.AddEmpleadoAsync(editingEmpleado);
+            if (editingEmpleado.IdEmpleado == 0)
+            {
+                await EmpleadoService.AddEmpleadoAsync(editingEmpleado);
+            }
+            else
+            {
+                await EmpleadoService.UpdateEmpleadoAsync(editingEmpleado);
+            }
+            showForm = false;
+            await LoadEmpleados();
         }
-        else
+        catch (Exception ex)
         {
-            await EmpleadoService.UpdateEmpleadoAsync(editingEmpleado);
+            await JSRuntime.InvokeVoidAsync("alert", ex.Message);
         }
-        showForm = false;
-        await LoadEmpleados();
     }
 
     private void CancelForm()
@@ -260,8 +267,15 @@ else if (showForm)
         bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar a {e.NombreUsuario}? Esto borrará la cuenta de sistema.");
         if (confirmed)
         {
-            await EmpleadoService.DeleteEmpleadoAsync(e.IdEmpleado, e.IdUsuario);
-            await LoadEmpleados();
+            try
+            {
+                await EmpleadoService.DeleteEmpleadoAsync(e.IdEmpleado, e.IdUsuario);
+                await LoadEmpleados();
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", ex.Message);
+            }
         }
     }
 }

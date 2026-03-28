@@ -2,6 +2,7 @@
 @using CoreAdmin.Models
 @using CoreAdmin.Services
 @inject ReportesService ReportesService
+@inject ClienteService ClienteService
 @inject AuthService AuthService
 @inject PrinterService PrinterService
 @inject SettingsService SettingsService
@@ -9,51 +10,52 @@
 
 <PageTitle>Reportes Financieros</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h3 class="mb-0 fw-bold text-dark">
-        <i class="bi bi-graph-up-arrow text-primary me-2"></i> Reportes Financieros
-    </h3>
+<div class="d-flex flex-column" style="height: calc(100vh - 120px);">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 flex-shrink-0">
+        <h3 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-graph-up-arrow text-primary me-2"></i> Reportes Financieros
+        </h3>
 
-    <div class="d-flex gap-2 align-items-center flex-wrap">
-        <label class="text-muted fw-semibold small">Desde:</label>
-        <input type="date" class="form-control form-control-sm border shadow-sm"
-               style="width: 140px;" @bind="fechaDesde" />
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <label class="text-muted fw-semibold small">Desde:</label>
+            <input type="date" class="form-control form-control-sm border shadow-sm"
+                   style="width: 140px;" @bind="fechaDesde" />
 
-        <label class="text-muted fw-semibold small ms-2">Hasta:</label>
-        <input type="date" class="form-control form-control-sm border shadow-sm"
-               style="width: 140px;" @bind="fechaHasta" />
+            <label class="text-muted fw-semibold small ms-2">Hasta:</label>
+            <input type="date" class="form-control form-control-sm border shadow-sm"
+                   style="width: 140px;" @bind="fechaHasta" />
 
-        <div class="input-group input-group-sm ms-md-3 shadow-sm" style="width: 250px;">
-            <span class="input-group-text bg-white border-end-0">
-                <i class="bi bi-search text-muted"></i>
-            </span>
-            <input type="text" class="form-control border-start-0 ps-0"
-                   placeholder="Buscar cliente..."
-                   @bind="searchTerm"
-                   @onkeyup="HandleSearch" />
+            <div class="input-group input-group-sm ms-md-3 shadow-sm" style="width: 250px;">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0 ps-0"
+                       placeholder="Buscar cliente..."
+                       @bind="searchTerm"
+                       @onkeyup="HandleSearch" />
+            </div>
+
+            <button class="btn btn-sm btn-dark ms-2 shadow-sm px-3"
+                    @onclick="() => LoadReportes()">
+                <i class="bi bi-funnel me-1"></i> Filtrar
+            </button>
         </div>
-
-        <button class="btn btn-sm btn-dark ms-2 shadow-sm px-3"
-                @onclick="LoadReportes">
-            <i class="bi bi-funnel me-1"></i> Filtrar
-        </button>
     </div>
-</div>
 
-<div class="card shadow-sm border-0 rounded-4 mb-4">
-    <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
-            <table class="table table-hover align-middle mb-0 text-nowrap">
-                <thead class="table-light sticky-top" style="z-index: 10;">
-                    <tr>
-                        <th class="ps-4 py-3">Comprobante</th>
-                        <th>Cliente</th>
-                        <th>Plan</th>
-                        <th class="text-end">Fecha</th>
-                        <th class="text-end">Monto</th>
-                        <th class="text-end pe-4">Acciones</th>
-                    </tr>
-                </thead>
+    <div class="card shadow-sm border-0 rounded-4 mb-0 flex-grow-1 d-flex flex-column overflow-hidden">
+        <div class="card-body p-0 flex-grow-1 d-flex flex-column overflow-hidden">
+            <div class="table-responsive flex-grow-1 custom-scrollbar">
+                <table class="table table-hover align-middle mb-0 text-nowrap">
+                    <thead class="table-light sticky-top" style="z-index: 10;">
+                        <tr>
+                            <th class="ps-4 py-3 bg-light">Comprobante</th>
+                            <th class="bg-light">Cliente</th>
+                            <th class="bg-light">Plan</th>
+                            <th class="text-end bg-light">Fecha</th>
+                            <th class="text-end bg-light">Monto</th>
+                            <th class="text-end pe-4 bg-light">Acciones</th>
+                        </tr>
+                    </thead>
 
                 <tbody>
                     @foreach (var p in pagos)
@@ -78,9 +80,13 @@
                             </td>
 
                             <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-primary"
+                                <button class="btn btn-sm btn-outline-primary me-1"
                                         @onclick="() => ImprimirComprobante(p)">
-                                    Imprimir
+                                    <i class="bi bi-printer"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => AnularComprobante(p)">
+                                    <i class="bi bi-x-circle"></i> Anular
                                 </button>
                             </td>
                         </tr>
@@ -106,10 +112,43 @@
             </table>
         </div>
     </div>
-</div>
-
-<div class="card p-3">
-    <strong>Total:</strong> $@TotalRecaudado.ToString("N2")
+        @if (hasMore)
+        {
+            <div class="card-footer bg-white border-top py-3 text-center">
+                <button class="btn btn-outline-primary btn-sm px-4" @onclick="LoadMoreReportes" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Cargando...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-arrow-down-circle me-2"></i>
+                        <span>Cargar más registros</span>
+                    }
+                </button>
+            </div>
+        }
+        @if (pagos.Any())
+        {
+            <div class="card-footer bg-white py-3 border-top border-light sticky-bottom shadow-sm rounded-bottom-4" style="z-index: 5;">
+                <div class="d-flex justify-content-between align-items-center px-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 text-success rounded-3 p-2 me-3">
+                            <i class="bi bi-wallet2 fs-5"></i>
+                        </div>
+                        <div class="lh-1">
+                            <span class="text-muted fw-bold text-uppercase d-block tracking-wider mb-1" style="font-size: 0.7rem;">Monto Total Recaudado</span>
+                            <small class="text-muted">En base a filtros seleccionados</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <h2 class="mb-0 fw-bold text-success" style="letter-spacing: -1px;">$@TotalRecaudado.ToString("N2")</h2>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </div>
 
 <!-- TICKET -->
@@ -167,20 +206,22 @@
 
 @code {
     private List<PagoReporte> pagos = new();
-    private bool isLoading = true;
     private PagoReporte? pagoAImprimir;
 
-    private DateTime? fechaDesde;
-    private DateTime? fechaHasta;
+    private DateTime? fechaDesde = DateTime.Now.AddDays(-30);
+    private DateTime? fechaHasta = DateTime.Now;
     private string searchTerm = "";
+    private bool isLoading = false;
 
     private decimal TotalRecaudado => pagos.Sum(p => p.Monto);
 
+    // Paginación
+    private int pageSize = 50;
+    private int currentPage = 0;
+    private bool hasMore = true;
+
     protected override async Task OnInitializedAsync()
     {
-        fechaDesde = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-        fechaHasta = DateTime.Now;
-
         await LoadReportes();
     }
 
@@ -192,17 +233,34 @@
         }
     }
 
-    private async Task LoadReportes()
+    private async Task LoadReportes(bool append = false)
     {
         isLoading = true;
+        if (!append)
+        {
+            currentPage = 0;
+            pagos.Clear();
+        }
 
-        pagos = await ReportesService.GetReportePagosAsync(
-            fechaDesde,
-            fechaHasta,
-            searchTerm
-        );
+        var res = await ReportesService.GetReportePagosAsync(fechaDesde, fechaHasta, searchTerm, pageSize, currentPage * pageSize);
+        
+        if (res.Any())
+        {
+            pagos.AddRange(res);
+            hasMore = res.Count == pageSize;
+        }
+        else
+        {
+            hasMore = false;
+        }
 
         isLoading = false;
+    }
+
+    private async Task LoadMoreReportes()
+    {
+        currentPage++;
+        await LoadReportes(true);
     }
 
     private async Task ImprimirComprobante(PagoReporte pago)
@@ -231,5 +289,15 @@
 
         pagoAImprimir = null;
         StateHasChanged();
+    }
+
+    private async Task AnularComprobante(PagoReporte pago)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"¿Estás seguro de que deseas anular el comprobante #{pago.IdPago.ToString("D5")} de {pago.Nombre} {pago.Apellido}?");
+        if (confirmed)
+        {
+            await ClienteService.AnularPagoAsync(pago.IdPago);
+            await LoadReportes();
+        }
     }
 }

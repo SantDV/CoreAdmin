@@ -21,7 +21,12 @@
             <div class="card-body p-0">
                 @if (showForm)
                 {
-                    <div class="p-4 bg-light border-bottom">
+                    <div class="p-4 bg-light border-bottom border-primary border-opacity-25" style="border-left: 4px solid var(--bs-primary);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0 fw-bold text-primary">
+                                @(isEditing ? $"Editando Plan: {editingPlan.PlanNombre} (ID: #{editingPlan.IdPlan})" : "Nuevo Plan de Membresía")
+                            </h6>
+                        </div>
                         <EditForm @key="editingPlan" Model="editingPlan" OnValidSubmit="SavePlan">
                             <DataAnnotationsValidator />
                             <div class="row g-3 align-items-end">
@@ -34,9 +39,12 @@
                                     <InputNumber class="form-control border-0 shadow-sm text-success fw-bold" @bind-Value="editingPlan.Precio" required />
                                 </div>
                                 <div class="col-md-3 d-flex gap-2">
-                                    <button type="submit" class="btn btn-success w-100 shadow-sm"><i class="bi bi-check-lg"></i> Guardar</button>
-                                    <button type="button" class="btn btn-light shadow-sm text-secondary" @onclick="() => showForm = false"><i class="bi bi-x-lg"></i></button>
+                                    <button type="submit" class="btn btn-success w-100 shadow-sm fw-bold"><i class="bi bi-check-lg me-1"></i> Guardar</button>
+                                    <button type="button" class="btn btn-light shadow-sm text-secondary border" @onclick="() => showForm = false"><i class="bi bi-x-lg"></i></button>
                                 </div>
+                            </div>
+                            <div class="mt-2">
+                                <ValidationSummary class="text-danger small" />
                             </div>
                         </EditForm>
                     </div>
@@ -165,6 +173,7 @@
     private PrinterSettings printerSettings = new();
     private bool isLoading = true;
     private bool showForm = false;
+    private bool isEditing = false;
     private Planes editingPlan = new();
     
     private bool isBackingUp = false;
@@ -194,31 +203,37 @@
     private void ShowAddForm()
     {
         editingPlan = new Planes();
+        isEditing = false;
         showForm = true;
         StateHasChanged();
     }
 
     private void EditPlan(Planes p)
     {
+        // Forzamos la creación de un nuevo objeto pero manteniendo el ID exacto
         editingPlan = new Planes
         {
             IdPlan = p.IdPlan,
             PlanNombre = p.PlanNombre,
             Precio = p.Precio
         };
+        isEditing = true;
         showForm = true;
         StateHasChanged();
     }
 
     private async Task SavePlan()
     {
-        if (editingPlan.IdPlan == 0)
-            await SettingsService.AddPlanAsync(editingPlan);
-        else
-            await SettingsService.UpdatePlanAsync(editingPlan);
-            
-        showForm = false;
-        await LoadPlanes();
+        try 
+        {
+            await SettingsService.SavePlanAsync(editingPlan);
+            showForm = false;
+            await LoadPlanes();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", ex.Message);
+        }
     }
 
     private async Task DeletePlan(int id)
@@ -226,8 +241,15 @@
         bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "¿Eliminar este plan permanentemente? Advertencia: Los clientes actuales que tengan este plan podrían experimentar errores en los reportes financieros si este ID se borra de la tabla maestra.");
         if (confirmed)
         {
-            await SettingsService.DeletePlanAsync(id);
-            await LoadPlanes();
+            try 
+            {
+                await SettingsService.DeletePlanAsync(id);
+                await LoadPlanes();
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", ex.Message);
+            }
         }
     }
     

@@ -89,17 +89,21 @@ public class PrinterService
 
     private async Task SendToNetworkPrinter(string ip, int port, byte[] data)
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
             using var client = new TcpClient();
-            await client.ConnectAsync(ip, port);
+            await client.ConnectAsync(ip, port, cts.Token);
             using var stream = client.GetStream();
-            await stream.WriteAsync(data, 0, data.Length);
-            await stream.FlushAsync();
+            await stream.WriteAsync(data, cts.Token);
+            await stream.FlushAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new Exception("La conexión con la impresora superó el tiempo de espera (5s). Verifique que la impresora esté encendida y en red.");
         }
         catch (Exception ex)
         {
-            // Podríamos loguear o lanzar la excepción para que Blazor la muestre
             throw new Exception($"Error de conexión con la impresora: {ex.Message}");
         }
     }
