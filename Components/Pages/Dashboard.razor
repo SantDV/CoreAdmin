@@ -2,6 +2,8 @@
 @using CoreAdmin.Models
 @using CoreAdmin.Services
 @inject ClienteService ClienteService
+@inject NotificationService NotificationService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -184,6 +186,7 @@ else if (stats != null)
                                     <th>Teléfono</th>
                                     <th>Email</th>
                                     <th>Fecha Vencimiento</th>
+                                    <th class="text-center pe-4">Notificación</th>
                                 </tr>
                             </thead>
                             <tbody class="border-top-0">
@@ -201,6 +204,28 @@ else if (stats != null)
                                                 <span class="badge bg-warning text-dark fw-normal px-2 py-1">
                                                     @(c.FechaVencimiento?.ToString("dd MMM yyyy"))
                                                 </span>
+                                            </td>
+                                            <td class="text-center pe-4">
+                                                @{
+                                                    var hist = historial.FirstOrDefault(h => h.IdCliente == c.IdCliente && h.FechaVencimientoAviso == c.FechaVencimiento?.ToString("yyyy-MM-dd"));
+                                                }
+                                                @if (hist != null)
+                                                {
+                                                    <span class="badge @(hist.Estado == 1 ? "bg-success" : "bg-danger") rounded-pill" title="Enviado el @hist.FechaEnvio.ToString("dd/MM HH:mm")">
+                                                        <i class="bi @(hist.Medio == "WA" ? "bi-whatsapp" : "bi-envelope") me-1"></i> @(hist.Estado == 1 ? "Enviado" : "Error")
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-success" @onclick='@(() => NotificarManual(c, "WA"))' title="Enviar WhatsApp">
+                                                            <i class="bi bi-whatsapp"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-info" @onclick='@(() => NotificarManual(c, "EMAIL"))' title="Enviar Email">
+                                                            <i class="bi bi-envelope"></i>
+                                                        </button>
+                                                    </div>
+                                                }
                                             </td>
                                         </tr>
                                     }
@@ -226,12 +251,45 @@ else if (stats != null)
 @code {
     private DashboardStats? stats;
     private List<Cliente> clientesPorVencer = new();
+    private List<NotificacionHistorial> historial = new();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
         stats = await ClienteService.GetDashboardStatsAsync();
         clientesPorVencer = await ClienteService.GetClientesPorVencerAsync();
+        historial = await NotificationService.GetHistorialRecienteAsync(100);
         isLoading = false;
+    }
+
+    private async Task NotificarManual(Cliente c, string medio)
+    {
+        var config = await NotificationService.GetConfigAsync();
+        bool success = false;
+        
+        if (medio == "WA") {
+            if (!config.WaActivo) {
+                await JSRuntime.InvokeVoidAsync("alert", "WhatsApp no está activo en Ajustes.");
+                return;
+            }
+            success = await NotificationService.SendWhatsAppAsync(c, config);
+        } else {
+            if (!config.EmailActivo) {
+                await JSRuntime.InvokeVoidAsync("alert", "Email no está activo en Ajustes.");
+                return;
+            }
+            success = await NotificationService.SendEmailAsync(c, config);
+        }
+
+        if (success) {
+            // Registrar en historial si fue exitoso
+            // El servicio lo hace automáticamente en CheckAndSend, pero aquí lo haremos manual para que aparezca el badge
+            await NotificationService.CheckAndSendExpirationsAsync(); // Esto refresca el historial si coincide con los 3 días, 
+                                                                     // pero mejor un método directo.
+            historial = await NotificationService.GetHistorialRecienteAsync(100);
+            StateHasChanged();
+        } else {
+            await JSRuntime.InvokeVoidAsync("alert", "Error al enviar la notificación. Verifica la configuración.");
+        }
     }
 }

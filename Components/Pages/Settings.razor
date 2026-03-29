@@ -2,6 +2,7 @@
 @using CoreAdmin.Models
 @using CoreAdmin.Services
 @inject SettingsService SettingsService
+@inject NotificationService NotificationService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Configuración Global</PageTitle>
@@ -131,36 +132,91 @@
         </div>
     </div>
 
-    <!-- Printer Configuration -->
-    <div class="col-lg-12 mt-4">
+    <!-- Alarmas y Notificaciones -->
+    <div class="col-lg-12 mt-4 mb-5">
         <div class="card shadow-sm border-0 rounded-4">
-            <div class="card-header bg-white py-3 border-bottom border-light">
-                <h5 class="mb-0 fw-bold"><i class="bi bi-printer-fill text-primary opacity-75 me-2"></i>Configuración de Impresora Térmica (ESC/POS)</h5>
+            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-bell-fill text-warning me-2"></i>Notificaciones Automáticas (Evolution API & SMTP)</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @onclick="TestWhatsApp" disabled="@(!notifConfig.WaActivo)">
+                        <i class="bi bi-whatsapp me-1"></i> Probar WA
+                    </button>
+                    <button class="btn btn-sm btn-outline-info rounded-pill px-3" @onclick="TestEmail" disabled="@(!notifConfig.EmailActivo)">
+                        <i class="bi bi-envelope me-1"></i> Probar Email
+                    </button>
+                </div>
             </div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label small text-muted fw-bold">Nombre / Modelo</label>
-                        <input type="text" class="form-control border-0 shadow-sm" @bind="printerSettings.PrinterName" placeholder="Ej: XPrinter XP-V320N" />
+                <div class="row g-4">
+                    <!-- WhatsApp Evolution API -->
+                    <div class="col-md-6 border-end border-light">
+                        <h6 class="fw-bold mb-3 text-success"><i class="bi bi-whatsapp me-2"></i>WhatsApp (Evolution API)</h6>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted fw-bold">URL de la API</label>
+                            <input type="text" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.WaApiUrl" placeholder="https://api.tu-servidor.com" />
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small text-muted fw-bold">Instancia</label>
+                                <input type="text" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.WaInstance" placeholder="Main" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted fw-bold">API Key / Token</label>
+                                <input type="password" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.WaToken" />
+                            </div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="waActiveSwitch" @bind="notifConfig.WaActivo">
+                            <label class="form-check-label small fw-bold text-muted" for="waActiveSwitch">Habilitar envíos por WhatsApp</label>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small text-muted fw-bold">Dirección IP (Ethernet)</label>
-                        <input type="text" class="form-control border-0 shadow-sm" @bind="printerSettings.PrinterIp" placeholder="192.168.1.100" />
+
+                    <!-- Email SMTP -->
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3 text-info"><i class="bi bi-envelope me-2"></i>Correo Electrónico (SMTP)</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-9">
+                                <label class="form-label small text-muted fw-bold">Servidor SMTP</label>
+                                <input type="text" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.SmtpHost" placeholder="smtp.gmail.com" />
+                            </div>
+                            <div class="col-3">
+                                <label class="form-label small text-muted fw-bold">Puerto</label>
+                                <input type="number" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.SmtpPort" />
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small text-muted fw-bold">Usuario / Email</label>
+                                <input type="text" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.SmtpUser" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted fw-bold">Contraseña</label>
+                                <input type="password" class="form-control border-0 bg-light shadow-none" @bind="notifConfig.SmtpPassword" />
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="emailActiveSwitch" @bind="notifConfig.EmailActivo">
+                                <label class="form-check-label small fw-bold text-muted" for="emailActiveSwitch">Habilitar Email</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sslSwitch" @bind="notifConfig.SmtpSsl">
+                                <label class="form-check-label small fw-bold text-muted" for="sslSwitch">SSL/TLS</label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label small text-muted fw-bold">Puerto RAW</label>
-                        <input type="number" class="form-control border-0 shadow-sm" @bind="printerSettings.PrinterPort" />
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-primary w-100 shadow-sm" @onclick="SavePrinterSettings">
-                            <i class="bi bi-save me-1"></i> Guardar Configuración
-                        </button>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="useNetworkSwitch" @bind="printerSettings.UseNetwork">
-                        <label class="form-check-label small fw-bold text-muted" for="useNetworkSwitch">Habilitar impresión directa vía Red (ESC/POS RAW)</label>
+
+                    <!-- Template Global -->
+                    <div class="col-12 border-top border-light pt-4">
+                        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-chat-left-dots me-2"></i>Plantilla del Mensaje de Vencimiento</h6>
+                        <p class="text-muted small mb-3">Usa etiquetas: <code>{nombre}</code>, <code>{apellido}</code>, <code>{fecha}</code></p>
+                        <textarea class="form-control border-0 bg-light shadow-none" rows="3" @bind="notifConfig.MensajeTemplate"></textarea>
+                        
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button class="btn btn-warning px-5 shadow-sm fw-bold" @onclick="SaveNotificationConfig">
+                                <i class="bi bi-save2 me-2"></i> Guardar Configuración de Alertas
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -171,6 +227,7 @@
 @code {
     private List<Planes> planes = new();
     private PrinterSettings printerSettings = new();
+    private NotificacionConfig notifConfig = new();
     private bool isLoading = true;
     private bool showForm = false;
     private bool isEditing = false;
@@ -183,6 +240,7 @@
     {
         await LoadPlanes();
         printerSettings = await SettingsService.GetPrinterSettingsAsync();
+        notifConfig = await NotificationService.GetConfigAsync();
     }
 
     private async Task SavePrinterSettings()
@@ -273,5 +331,31 @@
         
         isBackingUp = false;
         StateHasChanged();
+    }
+
+    private async Task SaveNotificationConfig()
+    {
+        await NotificationService.SaveConfigAsync(notifConfig);
+        await JSRuntime.InvokeVoidAsync("alert", "Configuración de notificaciones guardada.");
+    }
+
+    private async Task TestWhatsApp()
+    {
+        var tel = await JSRuntime.InvokeAsync<string>("prompt", "Ingresa un número de WhatsApp para la prueba (con código de país, ej: 54911...)");
+        if (string.IsNullOrEmpty(tel)) return;
+
+        var dummy = new Cliente { Nombre = "Test", Apellido = "User", Telefono = tel, FechaVencimiento = DateTime.Now.AddDays(3) };
+        var ok = await NotificationService.SendWhatsAppAsync(dummy, notifConfig);
+        await JSRuntime.InvokeVoidAsync("alert", ok ? "Mensaje de prueba enviado con éxito." : "Error al enviar mensaje. Revisa la URL/Token/Instancia.");
+    }
+
+    private async Task TestEmail()
+    {
+        var email = await JSRuntime.InvokeAsync<string>("prompt", "Ingresa un correo para la prueba:");
+        if (string.IsNullOrEmpty(email)) return;
+
+        var dummy = new Cliente { Nombre = "Test", Apellido = "User", Email = email, FechaVencimiento = DateTime.Now.AddDays(3) };
+        var ok = await NotificationService.SendEmailAsync(dummy, notifConfig);
+        await JSRuntime.InvokeVoidAsync("alert", ok ? "Correo de prueba enviado con éxito." : "Error al enviar correo. Revisa el host/user/pass.");
     }
 }

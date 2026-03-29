@@ -75,9 +75,48 @@ public static class DatabaseInitializer
             CreateIndexIfNotExist(connection, "idx_pagos_cliente", "pagos", "id_cliente");
             CreateIndexIfNotExist(connection, "idx_pagos_fecha", "pagos", "fecha_registro");
             CreateIndexIfNotExist(connection, "idx_pagos_estado", "pagos", "estado");
-            CreateIndexIfNotExist(connection, "idx_gastos_fecha", "GASTOS", "fecha_registro");
-            CreateIndexIfNotExist(connection, "idx_gastos_estado", "GASTOS", "estado");
+            CreateIndexInternal(connection, "idx_gastos_fecha", "GASTOS", "fecha_registro");
+            CreateIndexInternal(connection, "idx_gastos_estado", "GASTOS", "estado");
+
+            // --- TABLAS PARA NOTIFICACIONES ---
+            connection.Execute(@"CREATE TABLE IF NOT EXISTS ""CONFIGURACION_NOTIFICACIONES"" (
+                ""id"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                ""smtp_host"" TEXT,
+                ""smtp_port"" INTEGER,
+                ""smtp_user"" TEXT,
+                ""smtp_password"" TEXT,
+                ""smtp_ssl"" INTEGER DEFAULT 1,
+                ""wa_api_url"" TEXT,
+                ""wa_instance"" TEXT,
+                ""wa_token"" TEXT,
+                ""mensaje_template"" TEXT,
+                ""email_activo"" INTEGER DEFAULT 0,
+                ""wa_activo"" INTEGER DEFAULT 0
+            )");
+
+            connection.Execute(@"CREATE TABLE IF NOT EXISTS ""NOTIFICACIONES_HISTORIAL"" (
+                ""id_notificacion"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                ""id_cliente"" INTEGER,
+                ""fecha_vencimiento_aviso"" TEXT,
+                ""fecha_envio"" TEXT DEFAULT (datetime('now', 'localtime')),
+                ""medio"" TEXT,
+                ""estado"" INTEGER DEFAULT 1,
+                FOREIGN KEY(""id_cliente"") REFERENCES ""CLIENTE""(""id_cliente"")
+            )");
+
+            if (connection.ExecuteScalar<int>("SELECT count(*) FROM CONFIGURACION_NOTIFICACIONES") == 0)
+            {
+                connection.Execute(@"INSERT INTO CONFIGURACION_NOTIFICACIONES 
+                    (smtp_host, smtp_port, mensaje_template, wa_api_url) 
+                    VALUES ('smtp.gmail.com', 587, 'Hola {nombre}, te recordamos que tu membresía vence el {fecha}. ¡Te esperamos!', 'https://api.evolution.com')");
+            }
         }
+    }
+
+    private static void CreateIndexInternal(SqliteConnection connection, string indexName, string tableName, string columns)
+    {
+        // Reutilizamos el método existente pero con un nombre más corto para limpieza
+        CreateIndexIfNotExist(connection, indexName, tableName, columns);
     }
 
     private static void CreateIndexIfNotExist(SqliteConnection connection, string indexName, string tableName, string columns)

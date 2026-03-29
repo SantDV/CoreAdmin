@@ -202,4 +202,27 @@ CREATE INDEX IF NOT EXISTS "idx_gastos_fecha" ON "GASTOS" (
 CREATE INDEX IF NOT EXISTS "idx_gastos_estado" ON "GASTOS" (
     "estado"
 );
+CREATE TABLE IF NOT EXISTS "CONFIGURACION_NOTIFICACIONES" (
+	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+	"smtp_host" TEXT,
+	"smtp_port" INTEGER,
+	"smtp_user" TEXT,
+	"smtp_password" TEXT,
+	"smtp_ssl" INTEGER DEFAULT 1,
+	"wa_api_url" TEXT,
+	"wa_instance" TEXT,
+	"wa_token" TEXT,
+	"mensaje_template" TEXT,
+	"email_activo" INTEGER DEFAULT 0,
+	"wa_activo" INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS "NOTIFICACIONES_HISTORIAL" (
+	"id_notificacion" INTEGER PRIMARY KEY AUTOINCREMENT,
+	"id_cliente" INTEGER,
+	"fecha_vencimiento_aviso" TEXT,
+	"fecha_envio" TEXT DEFAULT (datetime('now', 'localtime')),
+	"medio" TEXT,
+	"estado" INTEGER DEFAULT 1,
+	FOREIGN KEY("id_cliente") REFERENCES "CLIENTE"("id_cliente")
+);
 COMMIT;
