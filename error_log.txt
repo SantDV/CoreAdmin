@@ -1,0 +1,30 @@
+[2026-04-27 02:28:16] ERROR: Error al actualizar cliente
+Exception: Debe seleccionar un plan válido.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente)
+   at CoreAdmin.Services.ClienteService.UpdateClienteAsync(Cliente cliente)
+--------------------------------------------------
+[2026-04-27 14:37:27] ERROR: Error al actualizar cliente
+Exception: Debe seleccionar un plan válido para un cliente activo.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 37
+   at CoreAdmin.Services.ClienteService.UpdateClienteAsync(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 293
+--------------------------------------------------
+[2026-05-02 02:38:13] ERROR: Error al actualizar cliente
+Exception: Debe seleccionar un plan válido para un cliente activo.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 37
+   at CoreAdmin.Services.ClienteService.UpdateClienteAsync(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 293
+--------------------------------------------------
+[2026-05-02 02:38:35] ERROR: Error al actualizar cliente
+Exception: Debe seleccionar un plan válido para un cliente activo.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 37
+   at CoreAdmin.Services.ClienteService.UpdateClienteAsync(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 293
+--------------------------------------------------
+[2026-05-02 03:48:42] ERROR: Fallo al renovar cliente
+Exception: Debe seleccionar un plan válido para un cliente activo.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 37
+   at CoreAdmin.Services.ClienteService.RenovarClienteAsync(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 242
+--------------------------------------------------
+[2026-05-02 03:49:16] ERROR: Fallo al renovar cliente
+Exception: Debe seleccionar un plan válido para un cliente activo.
+StackTrace:    at CoreAdmin.Services.ClienteService.ValidarCliente(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 37
+   at CoreAdmin.Services.ClienteService.RenovarClienteAsync(Cliente cliente) in C:\Users\SANTIAGO\Documents\proyectos antigravity\gimnasio\gymdashboard\Services\ClienteService.cs:line 242
+--------------------------------------------------

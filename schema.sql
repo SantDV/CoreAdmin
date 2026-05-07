@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS "CLIENTE" (
 	"contacto_emergencia_nombre"	TEXT,
 	"contacto_emergencia_telefono"	TEXT,
 	"vencimiento_apto_medico"	TEXT,
+	"codigo_asistencia"	TEXT(10),
 	PRIMARY KEY("id_cliente" AUTOINCREMENT),
 	FOREIGN KEY("id_genero") REFERENCES "GENERO"("id_genero"),
 	FOREIGN KEY("id_plan") REFERENCES "PLANES"("id_plan")
@@ -225,4 +226,14 @@ CREATE TABLE IF NOT EXISTS "NOTIFICACIONES_HISTORIAL" (
 	"estado" INTEGER DEFAULT 1,
 	FOREIGN KEY("id_cliente") REFERENCES "CLIENTE"("id_cliente")
 );
+CREATE TABLE IF NOT EXISTS "ASISTENCIA" (
+	"id_asistencia"	INTEGER,
+	"id_cliente"	INTEGER NOT NULL,
+	"fecha_entrada"	TEXT DEFAULT (datetime('now', 'localtime')),
+	"tipo"	TEXT DEFAULT 'Entrada',
+	PRIMARY KEY("id_asistencia" AUTOINCREMENT),
+	FOREIGN KEY("id_cliente") REFERENCES "CLIENTE"("id_cliente")
+);
+CREATE INDEX IF NOT EXISTS "idx_asistencia_cliente" ON "ASISTENCIA" ("id_cliente");
+CREATE INDEX IF NOT EXISTS "idx_asistencia_fecha" ON "ASISTENCIA" ("fecha_entrada");
 COMMIT;

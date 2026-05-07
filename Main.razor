@@ -2,8 +2,19 @@
 
 <Router AppAssembly="@typeof(Main).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        <ErrorBoundary>
+            <ChildContent>
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </ChildContent>
+            <ErrorContent>
+                <div class="alert alert-danger p-5 m-5">
+                    <h3>¡Ops! Algo salió mal.</h3>
+                    <p>La aplicación encontró un error inesperado. Por favor, intenta reiniciar la sección o contacta a soporte.</p>
+                    <button class="btn btn-outline-danger" onclick="window.location.reload()">Reiniciar Aplicación</button>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
     </Found>
     <NotFound>
         <PageTitle>No encontrado</PageTitle>

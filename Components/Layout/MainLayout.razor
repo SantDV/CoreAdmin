@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @using CoreAdmin.Services
 @inject AuthService AuthService
+@inject CheckInService CheckInService
 @implements IDisposable
 
 @if (AuthService.CurrentUser == null)
@@ -11,10 +12,10 @@
 else
 {
     <!-- Pantalla Principal Protegida -->
-    <div class="d-flex bg-light w-100" style="height: 100vh; overflow: hidden; background-color: #f8fafc !important;">
-        <!-- Sleek Modern Sidebar -->
-        <div class="text-white d-flex flex-column transition-sidebar shadow-lg position-relative no-print" 
-             style="height: 100vh; width: @SidebarWidth; min-width: @SidebarWidth; overflow-x: hidden; z-index: 1040; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-right: 1px solid rgba(255,255,255,0.05);">
+    <div class="d-flex w-100" style="height: 100vh; overflow: hidden; background-color: var(--fedora-bg);">
+        <!-- Fedora Style Sidebar -->
+        <div class="text-white d-flex flex-column transition-sidebar position-relative no-print" 
+             style="height: 100vh; width: @SidebarWidth; min-width: @SidebarWidth; overflow-x: hidden; z-index: 1040; background-color: var(--fedora-sidebar); border-right: 1px solid rgba(0,0,0,0.1);">
             
             <!-- Header & Toggle (Fixed Height) -->
             <div class="d-flex align-items-center p-3 mb-2 flex-shrink-0" style="min-height: 70px; border-bottom: 1px solid rgba(255,255,255,0.05);">
@@ -40,9 +41,9 @@ else
             <div class="flex-grow-1 overflow-y-auto overflow-x-hidden px-3 mt-2 custom-scrollbar">
                 <ul class="nav flex-column gap-2 mb-4">
                     <li class="nav-item" title="Inicio">
-                        <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="" Match="NavLinkMatch.All">
-                            <i class="bi bi-house-door @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
-                            @if (!isSidebarCollapsed) { <span class="fw-medium">Inicio</span> }
+                        <NavLink class="@($"nav-link fedora-nav-link {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="" Match="NavLinkMatch.All">
+                            <i class="bi bi-grid-fill @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                            @if (!isSidebarCollapsed) { <span class="fw-medium">Dashboard</span> }
                         </NavLink>
                     </li>
                     <li class="nav-item" title="Clientes">
@@ -66,40 +67,41 @@ else
 
                     <li class="nav-item mt-3 pt-3 border-top border-secondary border-opacity-25" title="Tienda y POS">
                         @if (!isSidebarCollapsed) { <span class="px-3 text-uppercase text-white-50 fw-bold d-block mb-2 text-truncate" style="font-size: 0.65rem; letter-spacing: 1px;">Tienda</span> }
-                        <div class="d-flex flex-column gap-2">
-                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="pos">
+                        <div class="d-flex flex-column gap-1">
+                            <NavLink class="@($"nav-link fedora-nav-link {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="pos">
                                 <i class="bi bi-cart-check @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
-                                @if (!isSidebarCollapsed) { <span class="fw-medium">Venta (POS)</span> }
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Punto de Venta</span> }
                             </NavLink>
-                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="inventory">
+                            <NavLink class="@($"nav-link fedora-nav-link {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="inventory">
                                 <i class="bi bi-box-seam @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
                                 @if (!isSidebarCollapsed) { <span class="fw-medium">Inventario</span> }
                             </NavLink>
-                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="sales">
+                            <NavLink class="@($"nav-link fedora-nav-link {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="sales">
                                 <i class="bi bi-receipt @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
-                                @if (!isSidebarCollapsed) { <span class="fw-medium">Historial Ventas</span> }
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Ventas</span> }
                             </NavLink>
                         </div>
                     </li>
                     
-                    @if (AuthService.CurrentUser?.IdRol == 0)
-                    {
-                        <li class="nav-item mt-3 pt-3 border-top border-secondary border-opacity-25" title="Panel de Administrador">
-                            @if (!isSidebarCollapsed) { <span class="px-3 text-uppercase text-white-50 fw-bold d-block mb-2 text-truncate" style="font-size: 0.65rem; letter-spacing: 1px;">Admin</span> }
+                    <li class="nav-item mt-3 pt-3 border-top border-secondary border-opacity-25 @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")" 
+                        title="@(AuthService.CurrentUser?.IdRol != 0 ? "Acceso Restringido (Solo Admin)" : "Panel de Administrador")">
+                        
+                        @if (!isSidebarCollapsed) { <span class="px-3 text-uppercase text-white-50 fw-bold d-block mb-2 text-truncate" style="font-size: 0.65rem; letter-spacing: 1px;">Admin</span> }
+                        
+                        <div class="d-flex flex-column gap-2">
+                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" 
+                                     href="@(AuthService.CurrentUser?.IdRol == 0 ? "employees" : "#")" title="Seguridad">
+                                <i class="bi bi-shield-lock @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Seguridad</span> }
+                            </NavLink>
                             
-                            <div class="d-flex flex-column gap-2">
-                                <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="employees" title="Seguridad">
-                                    <i class="bi bi-shield-lock @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
-                                    @if (!isSidebarCollapsed) { <span class="fw-medium">Seguridad</span> }
-                                </NavLink>
-                                
-                                <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" href="settings" title="Ajustes Generales">
-                                    <i class="bi bi-gear-fill @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
-                                    @if (!isSidebarCollapsed) { <span class="fw-medium">Configuración</span> }
-                                </NavLink>
-                            </div>
-                        </li>
-                    }
+                            <NavLink class="@($"nav-link rounded-3 text-white-50 d-flex align-items-center transition-colors {(isSidebarCollapsed ? "justify-content-center px-0 py-3" : "px-3 py-2")}")" 
+                                     href="@(AuthService.CurrentUser?.IdRol == 0 ? "settings" : "#")" title="Ajustes Generales">
+                                <i class="bi bi-gear-fill @(isSidebarCollapsed ? "fs-4" : "fs-5 me-3")"></i> 
+                                @if (!isSidebarCollapsed) { <span class="fw-medium">Configuración</span> }
+                            </NavLink>
+                        </div>
+                    </li>
                 </ul>
             </div>
             
@@ -147,12 +149,35 @@ else
             <!-- Glassmorphism decorative background glow -->
             <div class="position-absolute top-0 start-0 w-100 no-print" style="height: 200px; background: linear-gradient(180deg, rgba(200,210,225,0.4) 0%, rgba(248,249,250,0) 100%); z-index: 0; pointer-events: none;"></div>
             
-            <nav class="navbar navbar-light px-4 py-3 d-flex align-items-center position-relative mb-2 no-print" style="z-index: 1;">
-                <span class="navbar-brand mb-0 h4 fw-bolder" style="color: #1e293b; letter-spacing: -0.5px;">Panel de Control</span>
-                <div class="ms-auto d-flex align-items-center">
-                    <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill border-0 fw-medium">
-                        <i class="bi bi-calendar3 me-2 text-primary"></i>@DateTime.Now.ToString("dd MMM yyyy")
-                    </span>
+            <nav class="navbar navbar-light px-4 py-3 d-flex align-items-center position-relative mb-2 no-print" style="z-index: 1; background-color: var(--fedora-bg);">
+                <span class="navbar-brand mb-0 h4 fw-bold" style="color: var(--fedora-dark); letter-spacing: -0.5px;">Panel de Control</span>
+                
+                <div class="ms-4 d-flex align-items-center flex-grow-1" style="max-width: 450px;">
+                    <div class="input-group shadow-sm border-0 bg-white" style="border-radius: 20px !important; overflow: hidden;">
+                        <span class="input-group-text bg-white border-0 ps-3">
+                            @if (isProcessingCheckIn)
+                            {
+                                <span class="spinner-border spinner-border-sm text-primary"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-qr-code-scan text-primary"></i>
+                            }
+                        </span>
+                        <input type="text" class="form-control border-0 py-2 ps-1" 
+                               placeholder="Buscar cliente o código de acceso..." 
+                               @bind="checkInCode" 
+                               @onkeyup="HandleCheckInKeyUp"
+                               maxlength="6"
+                               style="font-size: 0.9rem; box-shadow: none;" />
+                    </div>
+                </div>
+
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <div class="d-none d-md-block text-end">
+                        <div class="small fw-bold" style="line-height: 1;">@DateTime.Now.ToString("dddd")</div>
+                        <div class="text-muted small">@DateTime.Now.ToString("dd MMMM, yyyy")</div>
+                    </div>
                 </div>
             </nav>
             
@@ -162,46 +187,53 @@ else
             </div>
         </div>
     </div>
+    
+    <AttendanceToast />
 
     <style>
         .transition-sidebar {
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .transition-colors {
+        
+        /* Fedora NavLink styling */
+        .fedora-nav-link {
+            display: flex;
+            align-items: center;
+            color: rgba(255,255,255,0.6) !important;
+            border-radius: 8px !important;
+            margin: 0 4px;
             transition: all 0.2s ease;
-        }
-        .text-shadow-glow {
-            text-shadow: 0 0 12px rgba(13, 110, 253, 0.6);
-        }
-        .hover-text-white:hover {
-            color: white !important;
+            text-decoration: none;
         }
         
-        /* Premium NavLink styling */
-        .nav-link.active {
-            background-color: rgba(13, 110, 253, 0.15) !important;
-            color: #60a5fa !important; /* vibrante azul claro */
-            font-weight: 600;
-        }
-        .nav-link:hover:not(.active) {
+        .fedora-nav-link:hover {
             background-color: rgba(255,255,255,0.05);
-            color: white !important;
+            color: #fff !important;
+        }
+
+        .fedora-nav-link.active {
+            background-color: var(--fedora-blue) !important;
+            color: #fff !important;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(53, 132, 228, 0.3);
         }
         
-        /* Custom scrollbar for sleekness across all internal panels */
+        /* Custom scrollbar Fedora style */
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent; 
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.5); 
+            background: rgba(0, 0, 0, 0.1); 
             border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 116, 139, 0.8); 
+
+        .role-restricted-element {
+            pointer-events: none !important;
+            opacity: 0.3 !important;
+            filter: grayscale(1) !important;
         }
     </style>
 }
@@ -213,6 +245,27 @@ else
     private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
+    }
+
+    private string checkInCode = "";
+    private bool isProcessingCheckIn = false;
+
+    private async Task HandleCheckInKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            if (checkInCode?.Length == 6)
+            {
+                isProcessingCheckIn = true;
+                StateHasChanged();
+                
+                await CheckInService.ProcessCheckInAsync(checkInCode);
+                
+                checkInCode = "";
+                isProcessingCheckIn = false;
+                StateHasChanged();
+            }
+        }
     }
 
     protected override void OnInitialized()

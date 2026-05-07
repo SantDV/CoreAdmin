@@ -24,4 +24,5 @@ public class Cliente
     public string? ContactoEmergenciaNombre { get; set; }
     public string? ContactoEmergenciaTelefono { get; set; }
     public DateTime? VencimientoAptoMedico { get; set; }
+    public string? CodigoAsistencia { get; set; }
 }

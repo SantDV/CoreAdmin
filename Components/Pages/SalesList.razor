@@ -89,7 +89,10 @@
                                     </button>
                                     @if (v.Estado != "Anulada")
                                     {
-                                        <button class="btn btn-sm btn-outline-danger" title="Anular Venta" @onclick="() => ConfirmAnular(v)">
+                                        <button class="btn btn-sm btn-outline-danger @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")" 
+                                                title="@(AuthService.CurrentUser?.IdRol != 0 ? "Privilegios de Administrador requeridos" : "Anular Venta")" 
+                                                @onclick="() => ConfirmAnular(v)"
+                                                disabled="@(AuthService.CurrentUser?.IdRol != 0)">
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     }

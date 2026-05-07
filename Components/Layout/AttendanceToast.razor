@@ -1,0 +1,121 @@
+@using CoreAdmin.Services
+@inject CheckInService CheckInService
+@implements IDisposable
+
+@if (ShowToast)
+{
+    <div class="attendance-toast-container">
+        <div class="attendance-toast shadow-lg animate-slide-in border-left-@Result.StatusColor">
+            <div class="d-flex align-items-center p-3">
+                <div class="flex-shrink-0">
+                    <div class="icon-circle bg-@Result.StatusColor-light text-@Result.StatusColor">
+                        <i class="bi @(Result.Success ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill")"></i>
+                    </div>
+                </div>
+                <div class="ms-3 flex-grow-1">
+                    <div class="fw-bold text-dark fs-6">
+                        @(Result.Cliente?.Nombre ?? "Atención") @(Result.Cliente?.Apellido ?? "")
+                    </div>
+                    <div class="text-secondary small mt-1">@Result.Message</div>
+                </div>
+                <button type="button" class="btn-close ms-2" @onclick="CloseToast"></button>
+            </div>
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-@Result.StatusColor progress-bar-timer" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .attendance-toast-container {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 9999;
+        pointer-events: none;
+    }
+    .attendance-toast {
+        background: white;
+        min-width: 320px;
+        max-width: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+        pointer-events: auto;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0,0,0,0.05);
+        border-left: 5px solid transparent;
+    }
+    
+    .border-left-success { border-left-color: #10b981; }
+    .border-left-warning { border-left-color: #f59e0b; }
+    .border-left-danger { border-left-color: #ef4444; }
+
+    .bg-success-light { background-color: #ecfdf5; }
+    .bg-warning-light { background-color: #fffbeb; }
+    .bg-danger-light { background-color: #fef2f2; }
+
+    .icon-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .animate-slide-in {
+        animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .progress-bar-timer {
+        animation: progressBar 5s linear forwards;
+    }
+
+    @@keyframes slideIn {
+        from { transform: translateX(120%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @@keyframes progressBar {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+</style>
+
+@code {
+    private bool ShowToast { get; set; } = false;
+    private CheckInResult Result { get; set; } = new();
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        CheckInService.OnCheckInProcessed += HandleCheckIn;
+    }
+
+    private void HandleCheckIn(CheckInResult result)
+    {
+        Result = result;
+        ShowToast = true;
+        InvokeAsync(StateHasChanged);
+
+        _timer?.Dispose();
+        _timer = new System.Threading.Timer(_ => 
+        {
+            CloseToast();
+        }, null, 5000, System.Threading.Timeout.Infinite);
+    }
+
+    private void CloseToast()
+    {
+        ShowToast = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CheckInService.OnCheckInProcessed -= HandleCheckIn;
+        _timer?.Dispose();
+    }
+}

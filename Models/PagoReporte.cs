@@ -9,4 +9,5 @@ public class PagoReporte
     public string? PlanNombre { get; set; }
     public decimal Monto { get; set; }
     public DateTime? FechaRegistro { get; set; }
+    public int Estado { get; set; } = 1;
 }

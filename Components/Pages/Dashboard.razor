@@ -3,6 +3,7 @@
 @using CoreAdmin.Services
 @inject ClienteService ClienteService
 @inject NotificationService NotificationService
+@inject AuthService AuthService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Dashboard</PageTitle>
@@ -26,34 +27,15 @@ else if (stats != null)
     <!-- Kpis Row 1 -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm border-0 border-start border-success border-4 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+            <div class="card shadow-sm border-0 h-100 btn-card" @onclick='() => VerDetalle("activos", "Clientes Activos")' style="cursor: pointer; background: var(--fedora-card-bg);">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle me-3">
+                            <i class="bi bi-people-fill fs-3"></i>
+                        </div>
                         <div>
-                            <h6 class="text-muted fw-semibold mb-1">Activos</h6>
-                            <h2 class="mb-0 fw-bold text-success">@stats.ClientesActivos</h2>
-                        </div>
-                        <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
-                            <i class="bi bi-people-fill fs-4"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 small text-muted">
-                        De un total de @stats.TotalClientes registrados
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 border-start border-warning border-4 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted fw-semibold mb-1">Por Vencer (7 días)</h6>
-                            <h2 class="mb-0 fw-bold text-warning">@stats.PlanesPorVencer</h2>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
-                            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Activos</h6>
+                            <h2 class="mb-0 fw-bold" style="color: var(--fedora-dark);">@stats.ClientesActivos</h2>
                         </div>
                     </div>
                 </div>
@@ -61,15 +43,15 @@ else if (stats != null)
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm border-0 border-start border-danger border-4 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted fw-semibold mb-1">Planes Vencidos</h6>
-                            <h2 class="mb-0 fw-bold text-danger">@stats.PlanesVencidos</h2>
+            <div class="card shadow-sm border-0 h-100 btn-card" @onclick='() => VerDetalle("por_vencer", "Planes por Vencer")' style="cursor: pointer; background: var(--fedora-card-bg);">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle me-3">
+                            <i class="bi bi-clock-history fs-3"></i>
                         </div>
-                        <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
-                            <i class="bi bi-x-circle-fill fs-4"></i>
+                        <div>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">A Vencer (7d)</h6>
+                            <h2 class="mb-0 fw-bold" style="color: var(--fedora-dark);">@stats.PlanesPorVencer</h2>
                         </div>
                     </div>
                 </div>
@@ -77,15 +59,31 @@ else if (stats != null)
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm border-0 border-start border-primary border-4 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted fw-semibold mb-1">Nuevos este mes</h6>
-                            <h2 class="mb-0 fw-bold text-primary">@stats.RegistrosMes</h2>
+            <div class="card shadow-sm border-0 h-100 btn-card" @onclick='() => VerDetalle("vencidos", "Planes Vencidos")' style="cursor: pointer; background: var(--fedora-card-bg);">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle me-3">
+                            <i class="bi bi-x-circle-fill fs-3"></i>
                         </div>
-                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
-                            <i class="bi bi-graph-up-arrow fs-4"></i>
+                        <div>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Vencidos</h6>
+                            <h2 class="mb-0 fw-bold" style="color: var(--fedora-dark);">@stats.PlanesVencidos</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100 btn-card" @onclick='() => VerDetalle("nuevos_mes", "Nuevos Clientes del Mes")' style="cursor: pointer; background: var(--fedora-card-bg);">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle me-3">
+                            <i class="bi bi-person-plus-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Nuevos (Mes)</h6>
+                            <h2 class="mb-0 fw-bold" style="color: var(--fedora-dark);">@stats.RegistrosMes</h2>
                         </div>
                     </div>
                 </div>
@@ -94,14 +92,14 @@ else if (stats != null)
     </div>
 
     <!-- Financial Row -->
-    <div class="row g-4 mb-4">
+    <div class="row g-4 mb-4 @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")">
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 bg-success text-white">
+            <div class="card shadow-sm border-0 text-white" style="background-color:#74c476;">
                 <div class="card-body py-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-white-50 fw-semibold mb-1">Ingresos del Mes</h6>
-                            <h2 class="mb-0 fw-bold">$@stats.IngresosMes.ToString("N2")</h2>
+                            <h2 class="mb-0 fw-bold">@(AuthService.CurrentUser?.IdRol == 0 ? $"${stats.IngresosMes:N2}" : "$ ---.--")</h2>
                         </div>
                         <i class="bi bi-cash-stack fs-1 opacity-25"></i>
                     </div>
@@ -109,12 +107,13 @@ else if (stats != null)
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 bg-danger text-white">
+            <div class="card shadow-sm border-0 text-white" style="background-color:#e4423f;">
+
                 <div class="card-body py-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-white-50 fw-semibold mb-1">Egresos del Mes</h6>
-                            <h2 class="mb-0 fw-bold">$@stats.EgresosMes.ToString("N2")</h2>
+                            <h2 class="mb-0 fw-bold">@(AuthService.CurrentUser?.IdRol == 0 ? $"${stats.EgresosMes:N2}" : "$ ---.--")</h2>
                         </div>
                         <i class="bi bi-cart-dash fs-1 opacity-25"></i>
                     </div>
@@ -122,12 +121,13 @@ else if (stats != null)
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 @(stats.BalanceMes >= 0 ? "bg-primary" : "bg-dark") text-white">
+            <div class="card shadow-sm border-0 @(stats.BalanceMes >= 0 ? "" : "bg-dark") text-white" style="background-color:@(stats.BalanceMes >= 0 ? "#51a2da" : "")">
+
                 <div class="card-body py-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-white-50 fw-semibold mb-1">Balance Neto</h6>
-                            <h2 class="mb-0 fw-bold">$@stats.BalanceMes.ToString("N2")</h2>
+                            <h2 class="mb-0 fw-bold">@(AuthService.CurrentUser?.IdRol == 0 ? $"${stats.BalanceMes:N2}" : "$ ---.--")</h2>
                         </div>
                         <i class="bi bi-bank fs-1 opacity-25"></i>
                     </div>
@@ -248,11 +248,109 @@ else if (stats != null)
     </div>
 }
 
+<!-- Modal Detalle Clientes -->
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-person-lines-fill me-2"></i> @modalTitulo
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarModal = false"></button>
+                </div>
+                <div class="modal-body p-0" style="max-height: 65vh; overflow-y: auto; background-color: #f8f9fa;">
+                    @if (clientesFiltrados == null)
+                    {
+                        <div class="d-flex justify-content-center align-items-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <span class="ms-3">Buscando clientes...</span>
+                        </div>
+                    }
+                    else if (!clientesFiltrados.Any())
+                    {
+                        <div class="py-5 text-center text-muted">
+                            <i class="bi bi-search fs-1 d-block mb-3 opacity-25"></i>
+                            No hay clientes en esta categoría.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr class="small text-uppercase">
+                                        <th class="ps-4">Nombre Completo</th>
+                                        <th>DNI / Doc</th>
+                                        <th>Teléfono</th>
+                                        <th class="text-end pe-4">Vencimiento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in clientesFiltrados)
+                                    {
+                                        <tr>
+                                            <td class="ps-4">
+                                                <div class="fw-semibold">@c.Nombre @c.Apellido</div>
+                                            </td>
+                                            <td><code class="text-primary small">@c.Documento</code></td>
+                                            <td><span class="text-muted">@(string.IsNullOrEmpty(c.Telefono) ? "-" : c.Telefono)</span></td>
+                                            <td class="text-end pe-4">
+                                                @{
+                                                    var esVencido = c.FechaVencimiento < DateTime.Now;
+                                                }
+                                                <span class="badge @(esVencido ? "bg-danger" : "bg-success") rounded-pill px-3">
+                                                    <i class="bi @(esVencido ? "bi-calendar-x" : "bi-calendar-check") me-1"></i>
+                                                    @c.FechaVencimiento?.ToString("dd/MM/yyyy")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <div class="me-auto text-muted small">
+                        Total: <b>@(clientesFiltrados?.Count ?? 0)</b> clientes
+                    </div>
+                    <button type="button" class="btn btn-outline-dark px-4" @onclick="() => mostrarModal = false">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .btn-card {
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+    .btn-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
+        filter: brightness(1.02);
+    }
+    .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 4px;
+    }
+</style>
+
 @code {
     private DashboardStats? stats;
     private List<Cliente> clientesPorVencer = new();
     private List<NotificacionHistorial> historial = new();
     private bool isLoading = true;
+
+    // Modal properties
+    private bool mostrarModal = false;
+    private string modalTitulo = "";
+    private List<Cliente>? clientesFiltrados;
 
     protected override async Task OnInitializedAsync()
     {
@@ -260,6 +358,17 @@ else if (stats != null)
         clientesPorVencer = await ClienteService.GetClientesPorVencerAsync();
         historial = await NotificationService.GetHistorialRecienteAsync(100);
         isLoading = false;
+    }
+
+    private async Task VerDetalle(string filtro, string titulo)
+    {
+        modalTitulo = titulo;
+        mostrarModal = true;
+        clientesFiltrados = null; // Mostrar loading
+        StateHasChanged();
+        
+        clientesFiltrados = await ClienteService.GetClientesFiltradosAsync(filtro);
+        StateHasChanged();
     }
 
     private async Task NotificarManual(Cliente c, string medio)

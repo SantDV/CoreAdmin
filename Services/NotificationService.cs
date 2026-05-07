@@ -102,7 +102,7 @@ public class NotificationService
 
             using var client = new SmtpClient();
             await client.ConnectAsync(config.SmtpHost, config.SmtpPort, config.SmtpSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
-            await client.AuthenticateAsync(config.SmtpUser, config.SmtpPassword);
+            await client.AuthenticateAsync(config.SmtpUser ?? "", config.SmtpPassword ?? "");
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
             return true;

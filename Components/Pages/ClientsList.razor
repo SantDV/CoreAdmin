@@ -2,95 +2,159 @@
 @using CoreAdmin.Models
 @using CoreAdmin.Services
 @inject ClienteService ClienteService
+@inject AuthService AuthService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>Clientes</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Gestión de Clientes</h2>
-    <div class="d-flex gap-3 align-items-center">
-        <div class="input-group shadow-sm" style="width: 300px;">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por DNI o Nombre..." @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearchKey" />
+    <h1 class="h3 fw-bold mb-0" style="color: var(--fedora-dark);">Clientes</h1>
+    <div class="d-flex gap-2">
+        <div class="input-group bg-white shadow-sm px-2" style="border-radius: 20px !important; width: 320px;">
+            <span class="input-group-text bg-transparent border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-0 bg-transparent shadow-none" placeholder="Buscar por nombre o DNI..." @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleSearchKey" style="font-size: 0.9rem;" />
         </div>
-        <button class="btn btn-primary shadow-sm text-nowrap" @onclick="ShowAddClientForm">
-            <i class="bi bi-person-plus me-2"></i> Nuevo Cliente
+        <button class="btn btn-primary px-4 fw-medium shadow-sm" @onclick="ShowAddClientForm">
+            <i class="bi bi-plus-lg me-2"></i> Nuevo
         </button>
     </div>
 </div>
 
 @if (showDetails && selectedClient != null)
 {
-    <div class="card shadow-sm mb-4 border-0 border-start border-primary border-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold text-primary"><i class="bi bi-person-vcard me-2"></i>Detalles del Cliente</h5>
-            <button type="button" class="btn-close" @onclick="CloseDetails"></button>
-        </div>
-        <div class="card-body p-4">
-            <div class="row g-4">
-                <!-- Columna Izquierda: Foto y Datos Básicos -->
-                <div class="col-md-3 text-center border-end">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 120px; height: 120px;">
-                        <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
-                    </div>
-                    <h4 class="fw-bold mb-1">@selectedClient.Nombre @selectedClient.Apellido</h4>
-                    <span class="badge rounded-pill @(selectedClient.Estado == 1 ? "bg-success" : "bg-secondary") mb-3">
-                        @(selectedClient.Estado == 1 ? "Activo" : "Inactivo")
-                    </span>
-                    <div class="text-muted small">Registrado el @selectedClient.FechaRegistro?.ToString("dd/MM/yyyy")</div>
+    <div class="fedora-modal-overlay" @onclick="CloseDetails">
+        <div class="fedora-modal-container" @onclick:stopPropagation>
+            <div class="card shadow-lg border-0 overflow-hidden" style="background-color: #fff; width: 100%; max-height: 90vh;">
+                <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center border-0">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-circle me-2"></i> Perfil del Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseDetails"></button>
                 </div>
-
-                <!-- Columna Central: Contacto y Plan -->
-                <div class="col-md-5">
-                    <h6 class="text-muted text-uppercase fw-bold small mb-3">Información de Contacto</h6>
-                    <div class="mb-2"><i class="bi bi-card-text text-primary me-2"></i><strong>DNI:</strong> @(selectedClient.Documento ?? "N/A")</div>
-                    <div class="mb-2"><i class="bi bi-telephone text-primary me-2"></i><strong>Teléfono:</strong> @(selectedClient.Telefono ?? "-")</div>
-                    <div class="mb-2"><i class="bi bi-envelope text-primary me-2"></i><strong>Email:</strong> @(selectedClient.Email ?? "-")</div>
-                    <div class="mb-4"><i class="bi bi-geo-alt text-primary me-2"></i><strong>Dirección:</strong> @(selectedClient.Direccion ?? "-")</div>
-
-                    <h6 class="text-muted text-uppercase fw-bold small mb-3">Suscripción Actual</h6>
-                    <div class="bg-light p-3 rounded">
-                        <div class="mb-1"><strong>Plan:</strong> @(planes.FirstOrDefault(p => p.IdPlan == selectedClient.IdPlan)?.PlanNombre ?? "N/A")</div>
-                        <div class="mb-1"><strong>Inició el:</strong> @selectedClient.FechaInicio?.ToString("dd/MM/yyyy")</div>
-                        <div><strong>Vence el:</strong> 
-                            <span class="@(selectedClient.FechaVencimiento < DateTime.Now ? "text-danger fw-bold" : "")">
-                                @selectedClient.FechaVencimiento?.ToString("dd/MM/yyyy")
+                <div class="card-body p-4 overflow-auto">
+                    <div class="row g-4">
+                        <!-- Columna Izquierda: Foto y Datos Básicos -->
+                        <div class="col-md-3 text-center border-end">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 120px; height: 120px;">
+                                <i class="bi bi-person-fill" style="font-size: 4rem;"></i>
+                            </div>
+                            <h4 class="fw-bold mb-1">@selectedClient.Nombre @selectedClient.Apellido</h4>
+                            <span class="badge rounded-pill @(selectedClient.Estado == 1 ? "bg-success" : "bg-secondary") mb-3">
+                                @(selectedClient.Estado == 1 ? "Activo" : "Inactivo")
                             </span>
+                            <div class="text-muted small">Registrado el @selectedClient.FechaRegistro?.ToString("dd/MM/yyyy")</div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Columna Derecha: Ficha Médica -->
-                <div class="col-md-4">
-                    <h6 class="text-muted text-uppercase fw-bold small mb-3">Ficha Médica y Emergencia</h6>
-                    <div class="card bg-light border-0">
-                        <div class="card-body">
-                            <div class="mb-2"><strong>Tipo de Sangre:</strong> <span class="badge bg-danger">@(selectedClient.TipoSangre ?? "---")</span></div>
-                            <div class="mb-2 text-danger"><strong>Alergias:</strong> @(string.IsNullOrEmpty(selectedClient.Alergias) ? "Ninguna declarada" : selectedClient.Alergias)</div>
-                            <div class="mb-3"><strong>Enfermedades:</strong> <span class="small d-block">@(string.IsNullOrEmpty(selectedClient.EnfermedadesCronicas) ? "Sin antecedentes" : selectedClient.EnfermedadesCronicas)</span></div>
-                            
-                            <hr />
-                            
-                            <h6 class="fw-bold small mb-2"><i class="bi bi-telephone-outbound me-2"></i>Contacto de Emergencia</h6>
-                            <div class="fw-bold text-primary">@selectedClient.ContactoEmergenciaNombre</div>
-                            <div class="text-dark">@selectedClient.ContactoEmergenciaTelefono</div>
+                        <!-- Columna Central: Contacto y Plan -->
+                        <div class="col-md-5">
+                            <h6 class="text-muted text-uppercase fw-bold small mb-3">Información de Contacto</h6>
+                            <div class="mb-2"><i class="bi bi-card-text text-primary me-2"></i><strong>DNI:</strong> @(selectedClient.Documento ?? "N/A")</div>
+                            <div class="mb-2"><i class="bi bi-telephone text-primary me-2"></i><strong>Teléfono:</strong> @(selectedClient.Telefono ?? "-")</div>
+                            <div class="mb-2"><i class="bi bi-envelope text-primary me-2"></i><strong>Email:</strong> @(selectedClient.Email ?? "-")</div>
+                            <div class="mb-2"><i class="bi bi-geo-alt text-primary me-2"></i><strong>Dirección:</strong> @(selectedClient.Direccion ?? "-")</div>
+                            <div class="mb-4"><i class="bi bi-key text-primary me-2"></i><strong>PIN de Acceso:</strong> <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 fw-bold">@(selectedClient.CodigoAsistencia ?? "S/N")</span></div>
 
-                            <div class="mt-3 pt-2 border-top">
-                                <small class="text-muted d-block mb-1">Apto Médico Vencimiento:</small>
-                                <span class="badge @(selectedClient.VencimientoAptoMedico < DateTime.Now ? "bg-danger" : "bg-info")">
-                                    @(selectedClient.VencimientoAptoMedico?.ToString("dd/MM/yyyy") ?? "No presentado")
-                                </span>
+                            <h6 class="text-muted text-uppercase fw-bold small mb-3">Suscripción Actual</h6>
+                            <div class="bg-light p-3 rounded">
+                                <div class="mb-1"><strong>Plan:</strong> @(planes.FirstOrDefault(p => p.IdPlan == selectedClient.IdPlan)?.PlanNombre ?? "N/A")</div>
+                                <div class="mb-1"><strong>Inició el:</strong> @selectedClient.FechaInicio?.ToString("dd/MM/yyyy")</div>
+                                <div><strong>Vence el:</strong> 
+                                    <span class="@(selectedClient.FechaVencimiento < DateTime.Now ? "text-danger fw-bold" : "")">
+                                        @selectedClient.FechaVencimiento?.ToString("dd/MM/yyyy")
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Ficha Médica -->
+                        <div class="col-md-4">
+                            <h6 class="text-muted text-uppercase fw-bold small mb-3">Ficha Médica y Emergencia</h6>
+                            <div class="card bg-light border-0">
+                                <div class="card-body p-3">
+                                    <div class="mb-2"><strong>Tipo de Sangre:</strong> <span class="badge bg-danger">@(selectedClient.TipoSangre ?? "---")</span></div>
+                                    <div class="mb-2 text-danger small"><strong>Alergias:</strong> @(string.IsNullOrEmpty(selectedClient.Alergias) ? "Ninguna declarada" : selectedClient.Alergias)</div>
+                                    <div class="mb-3"><strong>Enfermedades:</strong> <span class="small d-block">@(string.IsNullOrEmpty(selectedClient.EnfermedadesCronicas) ? "Sin antecedentes" : selectedClient.EnfermedadesCronicas)</span></div>
+                                    
+                                    <hr class="my-2" />
+                                    
+                                    <h6 class="fw-bold small mb-2"><i class="bi bi-telephone-outbound me-2"></i>Contacto de Emergencia</h6>
+                                    <div class="fw-bold text-primary small">@selectedClient.ContactoEmergenciaNombre</div>
+                                    <div class="text-dark small">@selectedClient.ContactoEmergenciaTelefono</div>
+
+                                    <div class="mt-2 pt-2 border-top">
+                                        <small class="text-muted d-block mb-1">Apto Médico Vencimiento:</small>
+                                        <span class="badge @(selectedClient.VencimientoAptoMedico < DateTime.Now ? "bg-danger" : "bg-info")">
+                                            @(selectedClient.VencimientoAptoMedico?.ToString("dd/MM/yyyy") ?? "No presentado")
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Nueva Sección: Historial de Pagos -->
+                    <div class="mt-4">
+                        <h6 class="text-muted text-uppercase fw-bold small mb-3"><i class="bi bi-clock-history me-2"></i>Historial de Pagos y Movimientos</h6>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle border rounded-3 overflow-hidden">
+                                <thead class="bg-light sticky-top">
+                                    <tr class="small text-muted fw-bold">
+                                        <th class="ps-3 py-2">Fecha</th>
+                                        <th class="py-2">Concepto / Plan</th>
+                                        <th class="py-2 text-end">Monto</th>
+                                        <th class="py-2 text-center">Estado</th>
+                                        <th class="py-2 text-end pe-3">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (history == null || !history.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted small">No hay registros de pagos para este cliente.</td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var p in history)
+                                        {
+                                            <tr class="@(p.Estado != 1 ? "table-light text-muted text-decoration-line-through" : "")">
+                                                <td class="ps-3 small">@(p.FechaRegistro?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                                <td class="small fw-semibold">@p.PlanNombre</td>
+                                                <td class="text-end small fw-bold text-primary">
+                                                    $@p.Monto.ToString("N2")
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (p.Estado == 1)
+                                                    {
+                                                        <span class="badge bg-success-subtle text-success border-0 rounded-pill" style="font-size: 0.7rem;">Cobrado</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger-subtle text-danger border-0 rounded-pill" style="font-size: 0.7rem;">Anulado</span>
+                                                    }
+                                                </td>
+                                                <td class="text-end pe-3">
+                                                    @if (p.Estado == 1 && AuthService.CurrentUser?.IdRol == 0)
+                                                    {
+                                                        <button class="btn btn-sm btn-link text-danger p-0" @onclick="() => AnularPagoDesdeHistorial(p)" title="Anular Pago">
+                                                            <i class="bi bi-x-circle"></i>
+                                                        </button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top text-end">
+                        <button class="btn btn-outline-primary me-2" @onclick="() => EditClient(selectedClient)">
+                            <i class="bi bi-pencil me-1"></i> Editar Datos
+                        </button>
+                        <button class="btn btn-secondary" @onclick="CloseDetails">Cerrar</button>
+                    </div>
                 </div>
-            </div>
-            <div class="mt-4 pt-3 border-top text-end">
-                <button class="btn btn-outline-primary me-2" @onclick="() => EditClient(selectedClient)">
-                    <i class="bi bi-pencil me-1"></i> Editar Datos
-                </button>
-                <button class="btn btn-secondary" @onclick="CloseDetails">Cerrar</button>
             </div>
         </div>
     </div>
@@ -107,151 +171,171 @@
 }
 else if (showForm)
 {
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0 fw-semibold">@(editingCliente.IdCliente == 0 ? "Añadir Nuevo Cliente" : "Editar / Renovar Cliente")</h5>
-        </div>
-        <div class="card-body p-4">
-            <EditForm Model="@editingCliente" OnValidSubmit="SaveClient">
-                <DataAnnotationsValidator />
-                
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-muted small">Documento</label>
-                        <InputText @bind-Value="editingCliente.Documento" class="form-control bg-light" placeholder="Ej. 12345678" />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-muted small">Nombre</label>
-                        <InputText @bind-Value="editingCliente.Nombre" class="form-control bg-light" placeholder="Juan" />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-muted small">Apellido</label>
-                        <InputText @bind-Value="editingCliente.Apellido" class="form-control bg-light" placeholder="Pérez" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold text-muted small">Email</label>
-                        <InputText @bind-Value="editingCliente.Email" type="email" class="form-control bg-light" placeholder="email@ejemplo.com" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold text-muted small">Teléfono</label>
-                        <InputText @bind-Value="editingCliente.Telefono" class="form-control bg-light" placeholder="+54 11 1234-5678" />
-                    </div>
-
-                    <div class="col-md-8">
-                        <label class="form-label fw-semibold text-muted small">Dirección</label>
-                        <InputText @bind-Value="editingCliente.Direccion" class="form-control bg-light" placeholder="Calle Falsa 123" />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-muted small">Fecha Nacimiento</label>
-                        <InputDate @bind-Value="editingCliente.FechaNacimiento" class="form-control bg-light" />
-                    </div>
-                    
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label fw-semibold text-muted small">Género</label>
-                        <InputSelect @bind-Value="editingCliente.IdGenero" class="form-select bg-light">
-                            <option value="">Seleccione un género...</option>
-                            @foreach (var g in generos)
-                            {
-                                <option value="@g.IdGenero">@g.GeneroNombre</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label fw-semibold text-muted small">Plan</label>
-                        <InputSelect @bind-Value="EditingClienteIdPlan" class="form-select bg-light">
-                            <option value="">Seleccione un plan...</option>
-                            @foreach (var p in planes)
-                            {
-                                <option value="@p.IdPlan">@p.PlanNombre - $@p.Precio</option>
-                            }
-                        </InputSelect>
-                    </div>
-
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label fw-semibold text-muted small">Fecha Inicio Plan</label>
-                        <InputDate @bind-Value="EditingClienteFechaInicio" class="form-control bg-light" />
-                    </div>
-
-                    <div class="col-md-6 mt-3">
-                        <label class="form-label fw-semibold text-muted small">Fecha Vencimiento Plan</label>
-                        <InputDate @bind-Value="editingCliente.FechaVencimiento" class="form-control bg-light" />
-                    </div>
-
-                    <div class="col-md-12 d-flex align-items-center mt-3">
-                        <div class="form-check form-switch form-switch-lg ps-5">
-                            <InputCheckbox @bind-Value="IsActiveBool" class="form-check-input" id="activeCheck" style="transform: scale(1.5); margin-left: -2.5em; margin-top: 0;" />
-                            <label class="form-check-label ms-2" for="activeCheck">Cliente Activo</label>
-                        </div>
-                    </div>
-
-                    <!-- Nueva Sección: Ficha Médica -->
-                    <div class="col-12 mt-4 pt-4 border-top">
-                        <h6 class="text-primary fw-bold mb-3"><i class="bi bi-heart-pulse me-2"></i>Ficha Médica y Emergencias</h6>
+    <div class="fedora-modal-overlay" @onclick="CancelForm">
+        <div class="fedora-modal-container" @onclick:stopPropagation>
+            <div class="card shadow-lg border-0" style="width: 100%; max-height: 90vh;">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-semibold text-primary">@(editingCliente.IdCliente == 0 ? "Añadir Nuevo Cliente" : "Editar / Renovar Cliente")</h5>
+                    <button type="button" class="btn-close" @onclick="CancelForm"></button>
+                </div>
+                <div class="card-body p-4 overflow-auto">
+                    <EditForm Model="@editingCliente" OnValidSubmit="SaveClient">
+                        <DataAnnotationsValidator />
+                        
                         <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold text-muted small">Tipo de Sangre</label>
-                                <InputSelect @bind-Value="editingCliente.TipoSangre" class="form-select bg-light">
-                                    <option value="">Desconocido</option>
-                                    <option value="A+">A+</option>
-                                    <option value="A-">A-</option>
-                                    <option value="B+">B+</option>
-                                    <option value="B-">B-</option>
-                                    <option value="AB+">AB+</option>
-                                    <option value="AB-">AB-</option>
-                                    <option value="O+">O+</option>
-                                    <option value="O-">O-</option>
-                                </InputSelect>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-semibold text-muted small">Alergias</label>
-                                <InputText @bind-Value="editingCliente.Alergias" class="form-control bg-light" placeholder="Ej. Penicilina, polen..." />
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Documento</label>
+                                <InputText @bind-Value="editingCliente.Documento" class="form-control bg-light" placeholder="Ej. 12345678" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold text-muted small">Venc. Apto Médico</label>
-                                <InputDate @bind-Value="editingCliente.VencimientoAptoMedico" class="form-control bg-light" />
+                                <label class="form-label fw-semibold text-muted small">Nombre</label>
+                                <InputText @bind-Value="editingCliente.Nombre" class="form-control bg-light" placeholder="Juan" />
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-semibold text-muted small">Enfermedades Crónicas / Observaciones Médicas</label>
-                                <InputTextArea @bind-Value="editingCliente.EnfermedadesCronicas" class="form-control bg-light" rows="2" placeholder="Ej. Hipertensión, Diabetes..." />
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Apellido</label>
+                                <InputText @bind-Value="editingCliente.Apellido" class="form-control bg-light" placeholder="Pérez" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-muted small">Email</label>
+                                <InputText @bind-Value="editingCliente.Email" type="email" class="form-control bg-light" placeholder="email@ejemplo.com" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-muted small">Contacto Emergencia (Nombre)</label>
-                                <InputText @bind-Value="editingCliente.ContactoEmergenciaNombre" class="form-control bg-light" placeholder="Nombre del familiar" />
+                                <label class="form-label fw-semibold text-muted small">Teléfono</label>
+                                <InputText @bind-Value="editingCliente.Telefono" class="form-control bg-light" placeholder="+54 11 1234-5678" />
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold text-muted small">Contacto Emergencia (Teléfono)</label>
-                                <InputText @bind-Value="editingCliente.ContactoEmergenciaTelefono" class="form-control bg-light" placeholder="Teléfono de contacto" />
+
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold text-muted small">Dirección</label>
+                                <InputText @bind-Value="editingCliente.Direccion" class="form-control bg-light" placeholder="Calle Falsa 123" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Fecha Nacimiento</label>
+                                <InputDate @bind-Value="editingCliente.FechaNacimiento" class="form-control bg-light" />
+                            </div>
+                            
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label fw-semibold text-muted small">Género</label>
+                                <InputSelect @bind-Value="editingCliente.IdGenero" class="form-select bg-light">
+                                    <option value="">Seleccione un género...</option>
+                                    @foreach (var g in generos)
+                                    {
+                                        <option value="@g.IdGenero">@g.GeneroNombre</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label fw-semibold text-muted small">Plan</label>
+                                <InputSelect @bind-Value="EditingClienteIdPlan" class="form-select bg-light">
+                                    <option value="">Seleccione un plan...</option>
+                                    @foreach (var p in planes)
+                                    {
+                                        <option value="@p.IdPlan">@p.PlanNombre - $@p.Precio</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label fw-semibold text-muted small">Fecha Inicio Plan</label>
+                                <InputDate @bind-Value="EditingClienteFechaInicio" class="form-control bg-light" />
+                            </div>
+
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label fw-semibold text-muted small">Fecha Vencimiento Plan</label>
+                                <InputDate @bind-Value="editingCliente.FechaVencimiento" class="form-control bg-light" />
+                            </div>
+
+                            <!-- Sección de Acceso -->
+                            <div class="col-md-12 mt-3 pt-3 border-top">
+                                <h6 class="text-primary fw-bold mb-3 small text-uppercase tracking-wider">Configuración de Acceso</h6>
+                                <div class="row align-items-end g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-muted small">PIN de Asistencia (6 dígitos)</label>
+                                        <div class="input-group shadow-sm-hover transition-all">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+                                            <InputText @bind-Value="editingCliente.CodigoAsistencia" class="form-control bg-light border-start-0" placeholder="Auto-generado si vacío" maxlength="6" />
+                                        </div>
+                                        <div class="form-text small">Deje vacío para generar uno nuevo automáticamente.</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch form-switch-lg pb-1 ms-2">
+                                            <InputCheckbox @bind-Value="IsActiveBool" class="form-check-input shadow-none" id="activeCheck" style="transform: scale(1.1); cursor: pointer;" />
+                                            <label class="form-check-label ms-2 fw-semibold" for="activeCheck" style="cursor: pointer;">Cliente Activo</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Nueva Sección: Ficha Médica -->
+                            <div class="col-12 mt-4 pt-4 border-top">
+                                <h6 class="text-primary fw-bold mb-3"><i class="bi bi-heart-pulse me-2"></i>Ficha Médica y Emergencias</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold text-muted small">Tipo de Sangre</label>
+                                        <InputSelect @bind-Value="editingCliente.TipoSangre" class="form-select bg-light">
+                                            <option value="">Desconocido</option>
+                                            <option value="A+">A+</option>
+                                            <option value="A-">A-</option>
+                                            <option value="B+">B+</option>
+                                            <option value="B-">B-</option>
+                                            <option value="AB+">AB+</option>
+                                            <option value="AB-">AB-</option>
+                                            <option value="O+">O+</option>
+                                            <option value="O-">O-</option>
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold text-muted small">Alergias</label>
+                                        <InputText @bind-Value="editingCliente.Alergias" class="form-control bg-light" placeholder="Ej. Penicilina, polen..." />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-muted small">Venc. Apto Médico</label>
+                                        <InputDate @bind-Value="editingCliente.VencimientoAptoMedico" class="form-control bg-light" />
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-semibold text-muted small">Enfermedades Crónicas / Observaciones Médicas</label>
+                                        <InputTextArea @bind-Value="editingCliente.EnfermedadesCronicas" class="form-control bg-light" rows="2" placeholder="Ej. Hipertensión, Diabetes..." />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-muted small">Contacto Emergencia (Nombre)</label>
+                                        <InputText @bind-Value="editingCliente.ContactoEmergenciaNombre" class="form-control bg-light" placeholder="Nombre del familiar" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-muted small">Contacto Emergencia (Teléfono)</label>
+                                        <InputText @bind-Value="editingCliente.ContactoEmergenciaTelefono" class="form-control bg-light" placeholder="Teléfono de contacto" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="mt-4 pt-4 border-top d-flex gap-2">
-                    <button type="submit" class="btn btn-success px-4 shadow-sm">
-                        <i class="bi bi-check-circle me-1"></i> Guardar
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="CancelForm">
-                        Cancelar
-                    </button>
+                        <div class="mt-4 pt-4 border-top d-flex gap-2">
+                            <button type="submit" class="btn btn-success px-4 shadow-sm">
+                                <i class="bi bi-check-circle me-1"></i> Guardar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary px-4" @onclick="CancelForm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </EditForm>
                 </div>
-            </EditForm>
+            </div>
         </div>
     </div>
 }
 
-<div class="card shadow-sm border-0 rounded-3">
+<div class="card shadow-sm border-0 mb-5">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4 py-3 text-muted fw-semibold">Doc/Nombre</th>
-                        <th class="py-3 text-muted fw-semibold">Contacto</th>
-                        <th class="py-3 text-muted fw-semibold">Estado</th>
-                        <th class="py-3 text-muted fw-semibold">Vencimiento</th>
-                        <th class="pe-4 py-3 text-end text-muted fw-semibold">Acciones</th>
+                <thead style="background-color: #fbfbfb;">
+                    <tr class="small text-uppercase text-muted fw-bold">
+                        <th class="ps-4 py-3">Cliente / Identificación</th>
+                        <th class="py-3">Contacto</th>
+                        <th class="py-3">Estado</th>
+                        <th class="py-3">Vencimiento</th>
+                        <th class="pe-4 py-3 text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="border-top-0">
@@ -271,7 +355,12 @@ else if (showForm)
                                                 <i class="bi bi-heartbreak-fill text-danger ms-1" title="Apto Médico Vencido"></i>
                                             }
                                         </span>
-                                        <small class="text-muted">Doc: @(string.IsNullOrEmpty(c.Documento) ? "N/A" : c.Documento)</small>
+                                        <small class="text-muted d-block">Doc: @(string.IsNullOrEmpty(c.Documento) ? "N/A" : c.Documento)</small>
+                                        <div class="mt-1">
+                                            <span class="badge bg-light text-primary border border-primary border-opacity-25" style="font-size: 0.65rem; font-weight: 500;">
+                                                <i class="bi bi-key-fill me-1"></i>PIN: @(c.CodigoAsistencia ?? "---")
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -284,11 +373,11 @@ else if (showForm)
                             <td>
                                 @if (c.Estado == 1)
                                 {
-                                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success fw-normal px-3 py-2">Activo</span>
+                                    <span class="badge rounded-pill bg-success-subtle text-success border-0 px-3 py-2 fw-semibold" style="background-color: #e1f5fe; color: #0288d1 !important;">Activo</span>
                                 }
                                 else
                                 {
-                                    <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary fw-normal px-3 py-2">Inactivo</span>
+                                    <span class="badge rounded-pill bg-light text-muted border-0 px-3 py-2 fw-semibold">Inactivo</span>
                                 }
                             </td>
                             <td>
@@ -306,21 +395,23 @@ else if (showForm)
                                 }
                             </td>
                             <td class="text-end pe-4 text-nowrap">
-                                <button class="btn btn-sm btn-light text-info me-1 border shadow-sm" @onclick="() => ViewDetails(c)" title="Ver Detalles Completos">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light text-success me-1 border shadow-sm" @onclick="() => RenovarPlan(c)" title="Renovar Plan">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light text-warning me-1 border shadow-sm" @onclick="() => ToggleEstadoClient(c)" title="@(c.Estado == 1 ? "Suspender Cliente" : "Reactivar Cliente")">
-                                    <i class="bi @(c.Estado == 1 ? "bi-pause-circle" : "bi-play-circle")"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light text-primary me-1 border shadow-sm" @onclick="() => EditClient(c)" title="Editar Cliente">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light text-danger border shadow-sm" @onclick="() => DeleteClient(c)" title="Eliminar Definitivamente">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-icon-fedora" @onclick="() => ViewDetails(c)" title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-icon-fedora text-success" @onclick="() => RenovarPlan(c)" title="Renovar plan">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-icon-fedora text-warning" @onclick="() => EditClient(c)" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    @if (AuthService.CurrentUser?.IdRol == 0)
+                                    {
+                                        <button class="btn btn-sm btn-icon-fedora text-danger" @onclick="() => DeleteClient(c)" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
                             </td>
                         </tr>
                     }
@@ -356,6 +447,64 @@ else if (showForm)
     </div>
 </div>
 
+<style>
+    .btn-icon-fedora {
+        background: transparent;
+        border: none;
+        padding: 6px 10px;
+        color: #555;
+        border-radius: 6px !important;
+        transition: all 0.2s;
+    }
+    .btn-icon-fedora:hover {
+        background: rgba(0,0,0,0.05);
+        color: #000;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(53, 132, 228, 0.02) !important;
+    }
+    .form-control:focus {
+        background-color: #fff !important;
+        border-color: var(--fedora-blue) !important;
+        box-shadow: 0 0 0 3px rgba(53, 132, 228, 0.15) !important;
+    }
+
+    /* Modal System */
+    .fedora-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.65);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        backdrop-filter: blur(8px);
+        padding: 20px;
+    }
+
+    .fedora-modal-container {
+        width: 100%;
+        max-width: 950px;
+        animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @@keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .card-body.overflow-auto::-webkit-scrollbar {
+        width: 6px;
+    }
+    .card-body.overflow-auto::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+</style>
+
 @code {
     private List<Cliente> clientes = new();
     private List<Genero> generos = new();
@@ -366,6 +515,8 @@ else if (showForm)
     private bool isRenovating = false;
     private Cliente editingCliente = new();
     private Cliente? selectedClient;
+    private List<PagoReporte> history = new();
+    private int originalEstado;
 
     private string searchTerm = "";
     private System.Timers.Timer? searchTimer;
@@ -378,7 +529,19 @@ else if (showForm)
     private bool IsActiveBool
     {
         get => editingCliente.Estado == 1;
-        set => editingCliente.Estado = value ? 1 : 0;
+        set
+        {
+            editingCliente.Estado = value ? 1 : 0;
+            if (value)
+            {
+                // Al reactivar, si las fechas son pasadas o no existen, sugerimos hoy
+                if (!editingCliente.FechaInicio.HasValue || editingCliente.FechaInicio.Value < DateTime.Now.Date)
+                {
+                    editingCliente.FechaInicio = DateTime.Now.Date;
+                }
+                RecalcularVencimiento();
+            }
+        }
     }
 
     private int? EditingClienteIdPlan
@@ -403,25 +566,34 @@ else if (showForm)
 
     private void RecalcularVencimiento()
     {
-        if (editingCliente.FechaInicio.HasValue)
+        if (editingCliente.FechaInicio.HasValue && editingCliente.IdPlan.HasValue)
         {
             var dias = GetDiasPorPlan(editingCliente.IdPlan);
             editingCliente.FechaVencimiento = editingCliente.FechaInicio.Value.AddDays(dias);
         }
+        else
+        {
+            // Si falta el plan o la fecha de inicio, no podemos calcular el vencimiento automáticamente
+            // Podemos dejarlo como está o limpiarlo para forzar al usuario a revisarlo
+        }
+        StateHasChanged();
     }
     
     private int GetDiasPorPlan(int? idPlan)
     {
+        if (idPlan == null || idPlan <= 0) return 0;
+
         var plan = planes.FirstOrDefault(p => p.IdPlan == idPlan);
-        if (plan == null) return 30; // Default por seguridad
+        if (plan == null) return 30; // Default por seguridad si el plan no se encuentra en la lista cargada
         
         var nombre = plan.PlanNombre?.ToLower() ?? "";
         if (nombre.Contains("clase") || nombre.Contains("dia") || nombre.Contains("día")) return 1;
         if (nombre.Contains("semana")) return 7;
         if (nombre.Contains("anual") || nombre.Contains("año")) return 365;
         if (nombre.Contains("trimestral")) return 90;
+        if (nombre.Contains("semestral")) return 180;
         
-        return 30; // "mensual"
+        return 30; // "mensual" o default
     }
 
     protected override async Task OnInitializedAsync()
@@ -531,6 +703,7 @@ else if (showForm)
     private void EditClient(Cliente c)
     {
         showDetails = false;
+        originalEstado = c.Estado;
         editingCliente = new Cliente
         {
             IdCliente = c.IdCliente,
@@ -560,11 +733,32 @@ else if (showForm)
         showForm = true;
     }
 
-    private void ViewDetails(Cliente c)
+    private async Task ViewDetails(Cliente c)
     {
         selectedClient = c;
         showForm = false;
         showDetails = true;
+        history = await ClienteService.GetPagosPorClienteAsync(c.IdCliente);
+    }
+
+    private async Task AnularPagoDesdeHistorial(PagoReporte p)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de que deseas ANULAR el pago de ${p.Monto} del día {p.FechaRegistro?.ToString("dd/MM/yyyy")}? Esta acción no se puede deshacer.");
+        if (confirmed)
+        {
+            try 
+            {
+                await ClienteService.AnularPagoAsync(p.IdPago);
+                if (selectedClient != null)
+                {
+                    history = await ClienteService.GetPagosPorClienteAsync(selectedClient.IdCliente);
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", ex.Message);
+            }
+        }
     }
 
     private void CloseDetails()
@@ -581,8 +775,9 @@ else if (showForm)
             {
                 await ClienteService.AddClienteAsync(editingCliente);
             }
-            else if (isRenovating)
+            else if (isRenovating || (originalEstado == 0 && editingCliente.Estado == 1))
             {
+                // Si es renovación explícita O era inactivo y ahora es activo, creamos pago
                 await ClienteService.RenovarClienteAsync(editingCliente);
             }
             else
@@ -626,11 +821,14 @@ else if (showForm)
             try 
             {
                 await ClienteService.DeleteClienteAsync(c.IdCliente);
-                await LoadClients();
             }
             catch (Exception ex)
             {
                 await JSRuntime.InvokeVoidAsync("alert", ex.Message);
+            }
+            finally
+            {
+                await LoadClients();
             }
         }
     }

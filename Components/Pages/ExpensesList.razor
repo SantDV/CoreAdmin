@@ -2,6 +2,7 @@
 @using CoreAdmin.Models
 @using CoreAdmin.Services
 @inject GastoService GastoService
+@inject AuthService AuthService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Egresos</PageTitle>
@@ -98,7 +99,10 @@
                                 <button class="btn btn-sm btn-light text-primary me-2 border shadow-sm" @onclick="() => EditGasto(g)" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </button>
-                                <button class="btn btn-sm btn-light text-danger border shadow-sm" @onclick="() => AnularGasto(g)" title="Anular">
+                                <button class="btn btn-sm btn-light text-danger border shadow-sm @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")" 
+                                        @onclick="() => AnularGasto(g)" 
+                                        disabled="@(AuthService.CurrentUser?.IdRol != 0)"
+                                        title="@(AuthService.CurrentUser?.IdRol != 0 ? "Solo Administradores pueden anular gastos" : "Anular")">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>

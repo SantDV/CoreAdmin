@@ -1,6 +1,10 @@
 using Dapper;
 using CoreAdmin.Models;
 using Microsoft.Data.Sqlite;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System;
 
 namespace CoreAdmin.Services;
 
@@ -72,14 +76,24 @@ public class InventoryService
 
     public async Task AddProductoAsync(Producto producto, int idUsuario)
     {
+        producto.Codigo = producto.Codigo?.Trim() ?? "";
+        
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
+        
+        // Duplicate Code Check
+        if (!string.IsNullOrEmpty(producto.Codigo))
+        {
+            var exists = await connection.ExecuteScalarAsync<int>("SELECT count(*) FROM PRODUCTO WHERE codigo = @Code AND estado = 1", new { Code = producto.Codigo }) > 0;
+            if (exists) throw new Exception($"Ya existe un producto registrado con el código: {producto.Codigo}");
+        }
+
         using var transaction = connection.BeginTransaction();
         try
         {
             var query = @"
-                INSERT INTO PRODUCTO (codigo, nombre, descripcion, id_categoria, precio_compra, precio_venta, stock, stock_minimo)
-                VALUES (@Codigo, @Nombre, @Descripcion, @IdCategoria, @PrecioCompra, @PrecioVenta, @Stock, @StockMinimo);
+                INSERT INTO PRODUCTO (codigo, nombre, descripcion, id_categoria, precio_compra, precio_venta, stock, stock_minimo, estado)
+                VALUES (@Codigo, @Nombre, @Descripcion, @IdCategoria, @PrecioCompra, @PrecioVenta, @Stock, @StockMinimo, 1);
                 SELECT last_insert_rowid();";
             
             int id = await connection.ExecuteScalarAsync<int>(query, producto, transaction);
@@ -89,8 +103,13 @@ public class InventoryService
             {
                 var queryMov = @"
                     INSERT INTO MOVIMIENTO_STOCK (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo, id_usuario)
-                    VALUES (@IdProducto, 'ENTRADA', @Cantidad, 0, @Cantidad, 'Registro inicial', @IdUsuario)";
-                await connection.ExecuteAsync(queryMov, new { IdProducto = id, Cantidad = producto.Stock, IdUsuario = idUsuario }, transaction);
+                    VALUES (@IdProducto, @Tipo, @Cantidad, 0, @Cantidad, 'Registro inicial', @IdUsuario)";
+                await connection.ExecuteAsync(queryMov, new { 
+                    IdProducto = id, 
+                    Tipo = Constants.MovimientoTipo.Entrada, 
+                    Cantidad = producto.Stock, 
+                    IdUsuario = idUsuario 
+                }, transaction);
             }
 
             transaction.Commit();
@@ -101,7 +120,20 @@ public class InventoryService
 
     public async Task UpdateProductoAsync(Producto producto)
     {
+        producto.Codigo = producto.Codigo?.Trim() ?? "";
+
         using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        // Duplicate Code Check
+        if (!string.IsNullOrEmpty(producto.Codigo))
+        {
+            var exists = await connection.ExecuteScalarAsync<int>(
+                "SELECT count(*) FROM PRODUCTO WHERE codigo = @Code AND id_producto != @Id AND estado = 1", 
+                new { Code = producto.Codigo, Id = producto.IdProducto }) > 0;
+            if (exists) throw new Exception($"Ya existe otro producto registrado con el código: {producto.Codigo}");
+        }
+
         var query = @"
             UPDATE PRODUCTO SET 
                 codigo = @Codigo, nombre = @Nombre, descripcion = @Descripcion, 
@@ -132,7 +164,12 @@ public class InventoryService
 
             if (stockNuevo < 0) throw new Exception("No hay stock suficiente para realizar este ajuste.");
 
-            await connection.ExecuteAsync("UPDATE PRODUCTO SET stock = @Nuevo WHERE id_producto = @Id", new { Nuevo = stockNuevo, Id = idProducto }, transaction);
+            // Update atómico
+            int rowsAffected = await connection.ExecuteAsync(
+                "UPDATE PRODUCTO SET stock = stock + @Cantidad WHERE id_producto = @Id AND stock + @Cantidad >= 0", 
+                new { Cantidad = cantidad, Id = idProducto }, transaction);
+
+            if (rowsAffected == 0) throw new Exception("No se pudo actualizar el stock. Verifique si hay existencias suficientes.");
 
             var queryMov = @"
                 INSERT INTO MOVIMIENTO_STOCK (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo, id_usuario)
@@ -140,7 +177,7 @@ public class InventoryService
             
             await connection.ExecuteAsync(queryMov, new {
                 IdProducto = idProducto,
-                Tipo = cantidad >= 0 ? "ENTRADA" : "SALIDA",
+                Tipo = cantidad >= 0 ? Constants.MovimientoTipo.Entrada : Constants.MovimientoTipo.Salida,
                 Cantidad = Math.Abs(cantidad),
                 Anterior = p.Stock,
                 Nuevo = stockNuevo,

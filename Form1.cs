@@ -30,11 +30,14 @@ public partial class Form1 : Form
         services.AddSingleton<SettingsService>();
         services.AddSingleton<PrinterService>();
         services.AddSingleton<GastoService>();
+        services.AddSingleton<AsistenciaService>();
+        services.AddSingleton<CheckInService>();
         services.AddSingleton<DashboardCacheService>();
         services.AddSingleton<FileService>();
         services.AddSingleton<InventoryService>();
         services.AddSingleton<VentaService>();
         services.AddSingleton<NotificationService>();
+        services.AddSingleton<LogService>();
         services.AddHttpClient();
 
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);

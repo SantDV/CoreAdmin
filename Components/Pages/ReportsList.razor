@@ -13,53 +13,53 @@
 
 <div class="d-flex flex-column" style="height: calc(100vh - 120px);">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 flex-shrink-0">
-        <h3 class="mb-0 fw-bold text-dark">
+        <h1 class="h3 fw-bold mb-0" style="color: var(--fedora-dark);">
             <i class="bi bi-graph-up-arrow text-primary me-2"></i> Reportes Financieros
-        </h3>
+        </h1>
 
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <label class="text-muted fw-semibold small">Desde:</label>
-            <input type="date" class="form-control form-control-sm border shadow-sm"
-                   style="width: 140px;" @bind="fechaDesde" />
+            <input type="date" class="form-control form-control-sm border-0 bg-white shadow-sm"
+                   style="width: 140px; border-radius: 20px; padding: 0.25rem 0.75rem;" @bind="fechaDesde" />
 
             <label class="text-muted fw-semibold small ms-2">Hasta:</label>
-            <input type="date" class="form-control form-control-sm border shadow-sm"
-                   style="width: 140px;" @bind="fechaHasta" />
+            <input type="date" class="form-control form-control-sm border-0 bg-white shadow-sm"
+                   style="width: 140px; border-radius: 20px; padding: 0.25rem 0.75rem;" @bind="fechaHasta" />
 
-            <div class="input-group input-group-sm ms-md-3 shadow-sm" style="width: 250px;">
-                <span class="input-group-text bg-white border-end-0">
+            <div class="input-group input-group-sm bg-white shadow-sm ms-md-3 px-2" style="width: 250px; border-radius: 20px;">
+                <span class="input-group-text bg-transparent border-0">
                     <i class="bi bi-search text-muted"></i>
                 </span>
-                <input type="text" class="form-control border-start-0 ps-0"
+                <input type="text" class="form-control border-0 bg-transparent shadow-none"
                        placeholder="Buscar cliente..."
                        @bind="searchTerm"
                        @onkeyup="HandleSearch" />
             </div>
 
-            <button class="btn btn-sm btn-dark ms-2 shadow-sm px-3"
+            <button class="btn btn-sm btn-dark ms-2 shadow-sm px-4 rounded-pill" style="background-color: var(--fedora-sidebar);"
                     @onclick="() => LoadReportes()">
                 <i class="bi bi-funnel me-1"></i> Filtrar
             </button>
 
-            <button class="btn btn-sm btn-outline-success ms-2 shadow-sm px-3"
+            <button class="btn btn-sm btn-outline-success ms-2 shadow-sm px-3 rounded-pill"
                     @onclick="ExportarExcel" disabled="@isLoading">
-                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+                <i class="bi bi-file-earmark-excel me-1"></i> Exportar
             </button>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 rounded-4 mb-0 flex-grow-1 d-flex flex-column overflow-hidden">
+    <div class="card shadow-sm border-0 mb-0 flex-grow-1 d-flex flex-column overflow-hidden" style="border-radius: 12px;">
         <div class="card-body p-0 flex-grow-1 d-flex flex-column overflow-hidden">
             <div class="table-responsive flex-grow-1 custom-scrollbar">
                 <table class="table table-hover align-middle mb-0 text-nowrap">
-                    <thead class="table-light sticky-top" style="z-index: 10;">
-                        <tr>
-                            <th class="ps-4 py-3 bg-light">Comprobante</th>
-                            <th class="bg-light">Cliente</th>
-                            <th class="bg-light">Plan</th>
-                            <th class="text-end bg-light">Fecha</th>
-                            <th class="text-end bg-light">Monto</th>
-                            <th class="text-end pe-4 bg-light">Acciones</th>
+                    <thead style="background-color: #fbfbfb; position: sticky; top: 0; z-index: 10;">
+                        <tr class="small text-uppercase text-muted fw-bold">
+                            <th class="ps-4 py-3 border-bottom-0">Comprobante</th>
+                            <th class="py-3 border-bottom-0">Cliente</th>
+                            <th class="py-3 border-bottom-0">Plan</th>
+                            <th class="text-end py-3 border-bottom-0">Fecha</th>
+                            <th class="text-end py-3 border-bottom-0">Monto</th>
+                            <th class="text-end pe-4 py-3 border-bottom-0">Acciones</th>
                         </tr>
                     </thead>
 
@@ -67,32 +67,36 @@
                     @foreach (var p in pagos)
                     {
                         <tr>
-                            <td class="ps-4">
+                            <td class="ps-4 text-muted fw-medium">
                                 #@p.IdPago.ToString("D5")
                             </td>
 
-                            <td>
+                            <td class="fw-bold" style="color: var(--fedora-dark);">
                                 @p.Nombre @p.Apellido
                             </td>
 
-                            <td>@p.PlanNombre</td>
+                            <td>
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border-0 px-2 py-1 rounded-pill">@p.PlanNombre</span>
+                            </td>
 
-                            <td class="text-end">
+                            <td class="text-end text-muted small">
                                 @(p.FechaRegistro?.ToString("dd/MM/yyyy HH:mm") ?? "-")
                             </td>
 
-                            <td class="text-end text-success fw-bold">
+                            <td class="text-end fw-bold" style="color: var(--fedora-blue);">
                                 $@p.Monto.ToString("N2")
                             </td>
 
                             <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-primary me-1"
-                                        @onclick="() => ImprimirComprobante(p)">
+                                <button class="btn btn-sm btn-icon-fedora me-1"
+                                        @onclick="() => ImprimirComprobante(p)" title="Imprimir Comprobante">
                                     <i class="bi bi-printer"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        @onclick="() => AnularComprobante(p)">
-                                    <i class="bi bi-x-circle"></i> Anular
+                                <button class="btn btn-sm btn-icon-fedora text-danger @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")" 
+                                        @onclick="() => AnularComprobante(p)"
+                                        disabled="@(AuthService.CurrentUser?.IdRol != 0)"
+                                        title="@(AuthService.CurrentUser?.IdRol != 0 ? "Requiere permisos de Administrador" : "Anular Pago")">
+                                    <i class="bi bi-x-circle"></i>
                                 </button>
                             </td>
                         </tr>
@@ -137,19 +141,19 @@
         }
         @if (pagos.Any())
         {
-            <div class="card-footer bg-white py-3 border-top border-light sticky-bottom shadow-sm rounded-bottom-4" style="z-index: 5;">
+            <div class="card-footer py-3 border-0 sticky-bottom shadow-sm @(AuthService.CurrentUser?.IdRol != 0 ? "role-restricted-element" : "")" style="z-index: 5; background-color: #fbfbfb; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                 <div class="d-flex justify-content-between align-items-center px-4">
                     <div class="d-flex align-items-center">
-                        <div class="bg-success bg-opacity-10 text-success rounded-3 p-2 me-3">
+                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2 me-3 d-flex justify-content-center align-items-center" style="width: 40px; height: 40px;">
                             <i class="bi bi-wallet2 fs-5"></i>
                         </div>
                         <div class="lh-1">
-                            <span class="text-muted fw-bold text-uppercase d-block tracking-wider mb-1" style="font-size: 0.7rem;">Monto Total Recaudado</span>
-                            <small class="text-muted">En base a filtros seleccionados</small>
+                            <span class="text-muted fw-bold d-block mb-1">Monto Total Recaudado</span>
+                            <small class="text-muted">@(AuthService.CurrentUser?.IdRol != 0 ? "Información restringida" : "En base a filtros seleccionados")</small>
                         </div>
                     </div>
                     <div class="text-end">
-                        <h2 class="mb-0 fw-bold text-success" style="letter-spacing: -1px;">$@TotalRecaudado.ToString("N2")</h2>
+                        <h2 class="mb-0 fw-bold" style="color: var(--fedora-blue); letter-spacing: -1px;">@(AuthService.CurrentUser?.IdRol == 0 ? $"${TotalRecaudado:N2}" : "$ ---.--")</h2>
                     </div>
                 </div>
             </div>

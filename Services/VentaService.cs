@@ -1,6 +1,10 @@
 using Dapper;
 using CoreAdmin.Models;
 using Microsoft.Data.Sqlite;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System;
 
 namespace CoreAdmin.Services;
 
@@ -17,27 +21,28 @@ public class VentaService
 
     public async Task<string> ProcessVentaAsync(Venta venta)
     {
+        if (venta.Detalles == null || !venta.Detalles.Any())
+            throw new Exception("La venta debe contener al menos un producto.");
+
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
         try
         {
-            // 1. Generar número de venta si no existe
-            if (string.IsNullOrEmpty(venta.NumeroVenta))
-            {
-                var count = await connection.ExecuteScalarAsync<int>("SELECT count(*) FROM VENTA", null, transaction);
-                venta.NumeroVenta = $"V-{(count + 1):D6}";
-            }
-
-            // 2. Insertar Venta
+            // 2. Insertar Venta con número temporal
             var queryVenta = @"
-                INSERT INTO VENTA (numero_venta, id_cliente, id_usuario, subtotal, descuento, total, metodo_pago, nota_adicional)
-                VALUES (@NumeroVenta, @IdCliente, @IdUsuario, @Subtotal, @Descuento, @Total, @MetodoPago, @NotaAdicional);
+                INSERT INTO VENTA (numero_venta, id_cliente, id_usuario, subtotal, descuento, total, metodo_pago, nota_adicional, estado)
+                VALUES ('TEMP', @IdCliente, @IdUsuario, @Subtotal, @Descuento, @Total, @MetodoPago, @NotaAdicional, @Estado);
                 SELECT last_insert_rowid();";
             
+            venta.Estado = Constants.VentaEstado.Pagada;
             int idVenta = await connection.ExecuteScalarAsync<int>(queryVenta, venta, transaction);
 
-            // 3. Insertar Detalles y Actualizar Stock
+            // Actualizar número de venta definitivo basado en el ID
+            venta.NumeroVenta = $"FAC-{idVenta:D6}";
+            await connection.ExecuteAsync("UPDATE VENTA SET numero_venta = @Num WHERE id_venta = @Id", new { Num = venta.NumeroVenta, Id = idVenta }, transaction);
+
+            // 3. Insertar Detalles y Actualizar Stock de forma atómica
             foreach (var detalle in venta.Detalles)
             {
                 detalle.IdVenta = idVenta;
@@ -46,25 +51,33 @@ public class VentaService
                     VALUES (@IdVenta, @IdProducto, @Cantidad, @PrecioUnitario, @Subtotal)";
                 await connection.ExecuteAsync(queryDetalle, detalle, transaction);
 
-                // Actualizar Stock del producto
+                // Obtener stock actual para el log de movimiento (antes de la actualización atómica)
                 var prod = await connection.QuerySingleAsync<Producto>("SELECT stock FROM PRODUCTO WHERE id_producto = @Id", new { Id = detalle.IdProducto }, transaction);
+                
+                // Actualización Atómica en SQL para evitar condiciones de carrera
+                int rowsAffected = await connection.ExecuteAsync(@"
+                    UPDATE PRODUCTO 
+                    SET stock = stock - @Cantidad 
+                    WHERE id_producto = @Id AND stock >= @Cantidad", 
+                    new { Cantidad = detalle.Cantidad, Id = detalle.IdProducto }, transaction);
+
+                if (rowsAffected == 0)
+                    throw new Exception($"Stock insuficiente para el producto ID {detalle.IdProducto} o el producto no existe.");
+
                 int stockNuevo = prod.Stock - detalle.Cantidad;
-
-                if (stockNuevo < 0) throw new Exception($"Stock insuficiente para el producto ID {detalle.IdProducto}");
-
-                await connection.ExecuteAsync("UPDATE PRODUCTO SET stock = @Nuevo WHERE id_producto = @Id", new { Nuevo = stockNuevo, Id = detalle.IdProducto }, transaction);
 
                 // Registrar Movimiento
                 var queryMov = @"
                     INSERT INTO MOVIMIENTO_STOCK (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo, id_usuario)
-                    VALUES (@IdProducto, 'SALIDA', @Cantidad, @Anterior, @Nuevo, 'Venta #' || @NumVenta, @IdUsuario)";
+                    VALUES (@IdProducto, @Tipo, @Cantidad, @Anterior, @Nuevo, @Motivo, @IdUsuario)";
                 
                 await connection.ExecuteAsync(queryMov, new {
                     IdProducto = detalle.IdProducto,
+                    Tipo = Constants.MovimientoTipo.Salida,
                     Cantidad = detalle.Cantidad,
                     Anterior = prod.Stock,
                     Nuevo = stockNuevo,
-                    NumVenta = venta.NumeroVenta,
+                    Motivo = $"Venta #{venta.NumeroVenta}",
                     IdUsuario = venta.IdUsuario
                 }, transaction);
             }
@@ -115,34 +128,36 @@ public class VentaService
         try
         {
             var venta = await connection.QuerySingleAsync<Venta>("SELECT * FROM VENTA WHERE id_venta = @Id", new { Id = idVenta }, transaction);
-            if (venta.Estado == "Anulada") throw new Exception("La venta ya se encuentra anulada.");
+            if (venta.Estado == Constants.VentaEstado.Anulada) throw new Exception("La venta ya se encuentra anulada.");
 
             var detalles = await connection.QueryAsync<DetalleVenta>("SELECT * FROM DETALLE_VENTA WHERE id_venta = @Id", new { Id = idVenta }, transaction);
 
-            // Revertir Stock
+            // Revertir Stock de forma atómica
             foreach (var d in detalles)
             {
                 var prod = await connection.QuerySingleAsync<Producto>("SELECT stock FROM PRODUCTO WHERE id_producto = @Id", new { Id = d.IdProducto }, transaction);
-                int stockNuevo = prod.Stock + d.Cantidad;
+                
+                await connection.ExecuteAsync("UPDATE PRODUCTO SET stock = stock + @Cantidad WHERE id_producto = @Id", new { Cantidad = d.Cantidad, Id = d.IdProducto }, transaction);
 
-                await connection.ExecuteAsync("UPDATE PRODUCTO SET stock = @Nuevo WHERE id_producto = @Id", new { Nuevo = stockNuevo, Id = d.IdProducto }, transaction);
+                int stockNuevo = prod.Stock + d.Cantidad;
 
                 // Registrar Movimiento de reversión
                 var queryMov = @"
                     INSERT INTO MOVIMIENTO_STOCK (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, motivo, id_usuario)
-                    VALUES (@IdProducto, 'ENTRADA', @Cantidad, @Anterior, @Nuevo, 'Anulación Venta #' || @NumVenta, @IdUsuario)";
+                    VALUES (@IdProducto, @Tipo, @Cantidad, @Anterior, @Nuevo, @Motivo, @IdUsuario)";
                 
                 await connection.ExecuteAsync(queryMov, new {
                     IdProducto = d.IdProducto,
+                    Tipo = Constants.MovimientoTipo.Entrada,
                     Cantidad = d.Cantidad,
                     Anterior = prod.Stock,
                     Nuevo = stockNuevo,
-                    NumVenta = venta.NumeroVenta,
+                    Motivo = $"Anulación Venta #{venta.NumeroVenta}",
                     IdUsuario = idUsuario
                 }, transaction);
             }
 
-            await connection.ExecuteAsync("UPDATE VENTA SET estado = 'Anulada' WHERE id_venta = @Id", new { Id = idVenta }, transaction);
+            await connection.ExecuteAsync("UPDATE VENTA SET estado = @Estado WHERE id_venta = @Id", new { Estado = Constants.VentaEstado.Anulada, Id = idVenta }, transaction);
 
             transaction.Commit();
             _dashboardCache.Invalidate();
